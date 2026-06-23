@@ -4,6 +4,10 @@ set -euo pipefail
 PROJECT="/home/derc/Godot/VectorGame"
 GODOT="/home/derc/bin/godot"
 SCRATCH="${SCRATCH:-/tmp/grok-goal-98594fc3f297/implementer}"
+ANDROID_HOME="${ANDROID_HOME:-/home/derc/Android/Sdk}"
+JAVA_HOME="${JAVA_HOME:-/home/derc/.local/jdk-17.0.14+7}"
+export ANDROID_HOME JAVA_HOME
+export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
 mkdir -p "$SCRATCH"
 
 echo "=== Astro Defender verification (plan VP) ==="
@@ -78,6 +82,11 @@ grep -rq 'InputEventScreenDrag' "$PROJECT/scripts"
 grep -rq 'AudioStream' "$PROJECT/scripts"
 grep -rq 'fire_rate' "$PROJECT/scripts"
 grep -rq 'has_active_aim' "$PROJECT/scripts"
+grep -q 'func reset_state' "$PROJECT/scripts/touch_input.gd"
+grep -q 'thrust_dir = Vector2.ZERO' "$PROJECT/scripts/touch_input.gd"
+grep -q 'LEFT_ZONE_FRACTION' "$PROJECT/scripts/touch_input.gd"
+grep -q '_finger_zones.erase' "$PROJECT/scripts/touch_input.gd"
+grep -q 'func _recompute_state' "$PROJECT/scripts/touch_input.gd"
 test -f "$PROJECT/export_presets.cfg"
 grep -q 'platform="Android"' "$PROJECT/export_presets.cfg"
 ! grep -rE 'Sprite2D|TextureRect|AnimatedSprite' "$PROJECT/scenes" "$PROJECT/scripts" 2>/dev/null
@@ -123,26 +132,73 @@ if grep -qiE "Can't run project|fatal|SCRIPT ERROR|Parse Error" "$SCRATCH/godot_
   exit 1
 fi
 
-echo "[VP-5] Android export preset (source only)"
+echo "[VP-5] Android export preset fields"
 test -f "$PROJECT/export_presets.cfg"
+grep -q 'name="Android"' "$PROJECT/export_presets.cfg"
+grep -q 'platform="Android"' "$PROJECT/export_presets.cfg"
+grep -q 'export_path="build/AstroDefender.apk"' "$PROJECT/export_presets.cfg"
+grep -q 'architectures/armeabi-v7a=true' "$PROJECT/export_presets.cfg"
+grep -q 'architectures/arm64-v8a=true' "$PROJECT/export_presets.cfg"
+grep -q 'package/unique_name="com.astrodefender.game"' "$PROJECT/export_presets.cfg"
+grep -q 'name="Web"' "$PROJECT/export_presets.cfg"
+grep -q 'platform="Web"' "$PROJECT/export_presets.cfg"
+
+"$ANDROID_HOME/platform-tools/adb" start-server >/dev/null 2>&1 || true
+
+_export_apk() {
+  local label="$1"
+  local logfile="$2"
+  echo "[VP-5] Android export $label"
+  set +e
+  "$GODOT" --headless --path "$PROJECT" --export-release "Android" build/AstroDefender.apk 2>&1 | tee "$logfile"
+  local rc=${PIPESTATUS[0]}
+  set -e
+  echo "EXPORT_${label}_EXIT_CODE=$rc"
+  if [ "$rc" -ne 0 ]; then
+    echo "FAIL: export $label exit code $rc"
+    exit 1
+  fi
+  if grep -qiE 'ERROR: (Cannot export|Project export for preset)' "$logfile"; then
+    echo "FAIL: export $label reported configuration/export error"
+    exit 1
+  fi
+  sed 's/\x1b\[[0-9;]*m//g' "$logfile" | grep -q '\[ DONE \] export' || { echo "FAIL: export $label did not finish"; exit 1; }
+}
+
+_export_apk "1" "$SCRATCH/godot_export_1.log"
+_export_apk "2" "$SCRATCH/godot_export_2.log"
+
+APK="$PROJECT/build/AstroDefender.apk"
+test -f "$APK" || { echo "FAIL: APK missing"; exit 1; }
+APK_BYTES=$(stat -c%s "$APK")
+echo "EXPORT_APK_BYTES=$APK_BYTES" | tee -a "$SCRATCH/verify_output.log"
+awk -v s="$APK_BYTES" 'BEGIN { if (s < 5000000) exit 1 }' || { echo "FAIL: APK too small ($APK_BYTES bytes)"; exit 1; }
+unzip -l "$APK" > "$SCRATCH/apk_listing.txt"
+grep -q 'AndroidManifest.xml' "$SCRATCH/apk_listing.txt" || { echo "FAIL: no AndroidManifest"; exit 1; }
+grep -q 'libgodot' "$SCRATCH/apk_listing.txt" || { echo "FAIL: no libgodot"; exit 1; }
+grep -q 'assets/' "$SCRATCH/apk_listing.txt" || { echo "FAIL: no assets"; exit 1; }
 
 (cd "$PROJECT" && git ls-files) > "$SCRATCH/changed_files_manifest.txt"
 
-echo "VERIFY_EXIT_CODE=0" | tee "$SCRATCH/verify_output.log"
-echo "VERIFY_WALL_VELOCITY=$WALL_VEL" | tee -a "$SCRATCH/verify_output.log"
-echo "PASS: plan verification complete" | tee -a "$SCRATCH/verify_output.log"
+: > "$SCRATCH/verify_output.log"
+echo "VERIFY_EXIT_CODE=0" >> "$SCRATCH/verify_output.log"
+echo "VERIFY_WALL_VELOCITY=$WALL_VEL" >> "$SCRATCH/verify_output.log"
+echo "PASS: plan verification complete" >> "$SCRATCH/verify_output.log"
+cat "$SCRATCH/verify_output.log"
 
 cat > "$SCRATCH/vp_evidence.txt" <<EOF
 VERIFY_EXIT_CODE=0
 VERIFY_WALL_VELOCITY=$WALL_VEL
+EXPORT_APK_BYTES=$APK_BYTES
+EXPORT_1_EXIT_CODE=0
+EXPORT_2_EXIT_CODE=0
 
 VP-1a: godot_launch_1.log — custom options (enemies=6,lives=5,fire_rate=0.10)
-  - touch_thrust_peak, touch_shoot_score=100, spawner_enemy_count=6
-  - lives_after_hit=4, verify_exit=0
+  - touch_thrust_cleared=true, touch_shoot_score=100, verify_exit=0
 VP-1b: godot_launch_2.log — repeat verify launch
-VP-2/3: autoloads, touch/audio/options source present
+VP-2/3: autoloads, touch release/recompute logic present
 VP-4: plain launches clean
-VP-5: export_presets.cfg present
+VP-5: godot_export_1.log + godot_export_2.log — CLI export succeeded, APK validated
 
 Changed files: see changed_files_manifest.txt ($(wc -l < "$SCRATCH/changed_files_manifest.txt") git-tracked files)
 EOF
