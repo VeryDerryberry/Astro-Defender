@@ -31,6 +31,19 @@ func _ready() -> void:
 	_on_state_changed(GameManager.state)
 	_update_hud()
 
+	if _verify_mode_enabled():
+		var verifier := preload("res://scripts/headless_verify.gd").new()
+		add_child(verifier)
+		verifier.setup(self)
+		verifier.run()
+
+
+func _verify_mode_enabled() -> bool:
+	for arg in OS.get_cmdline_user_args():
+		if arg == "--verify":
+			return true
+	return false
+
 func _unhandled_input(event: InputEvent) -> void:
 	if GameManager.state == GameManager.State.MENU:
 		if event is InputEventKey or event is InputEventMouseButton:

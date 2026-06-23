@@ -38,6 +38,9 @@ func _physics_process(delta: float) -> void:
 
 	_update_pursuit()
 	global_position += velocity * delta
+	var viewport_size := get_viewport_rect().size
+	if GameLogic.is_inside_playable(global_position, viewport_size, 10.0):
+		global_position = GameLogic.clamp_to_playable_bounds(global_position, viewport_size, 10.0)
 
-	if GameLogic.is_outside_play_area(global_position, get_viewport_rect().size, 60.0):
+	if GameLogic.is_outside_play_area(global_position, viewport_size, 60.0):
 		queue_free()

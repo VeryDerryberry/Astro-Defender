@@ -39,6 +39,18 @@ static func is_inside_playable(
 	return playable_rect(viewport_size, hull_radius).has_point(pos)
 
 
+static func clamp_to_playable_bounds(
+	pos: Vector2,
+	viewport_size: Vector2,
+	hull_radius: float = 0.0
+) -> Vector2:
+	var inner := playable_rect(viewport_size, hull_radius)
+	return Vector2(
+		clampf(pos.x, inner.position.x, inner.position.x + inner.size.x),
+		clampf(pos.y, inner.position.y, inner.position.y + inner.size.y)
+	)
+
+
 static func arena_border_points(viewport_size: Vector2) -> PackedVector2Array:
 	var rect := arena_rect(viewport_size)
 	var top_left := rect.position

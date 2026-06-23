@@ -38,13 +38,6 @@ func _physics_process(delta: float) -> void:
 	rotation = (mouse_pos - global_position).angle() + PI / 2.0
 
 	move_and_slide()
-	var viewport_size := get_viewport_rect().size
-	velocity = GameLogic.zero_velocity_into_wall(
-		velocity,
-		global_position,
-		GameLogic.SHIP_HULL_RADIUS,
-		viewport_size
-	)
 
 	if Input.is_action_pressed("shoot") and can_shoot:
 		_shoot()
