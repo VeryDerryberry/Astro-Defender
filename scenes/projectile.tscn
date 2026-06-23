@@ -1,0 +1,22 @@
+[gd_scene load_steps=3 format=3 uid="uid://bprojectile001"]
+
+[ext_resource type="Script" path="res://scripts/projectile.gd" id="1_projectile"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_projectile"]
+size = Vector2(3, 10)
+
+[node name="Projectile" type="Area2D"]
+collision_layer = 4
+collision_mask = 2
+script = ExtResource("1_projectile")
+
+[node name="Line2D" type="Line2D" parent="."]
+width = 2.0
+default_color = Color(0.4, 1, 1, 1)
+points = PackedVector2Array(0, -5, 0, 5)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("RectangleShape2D_projectile")
+
+[node name="LifetimeTimer" type="Timer" parent="."]
+one_shot = true

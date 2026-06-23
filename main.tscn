@@ -1,0 +1,234 @@
+[gd_scene load_steps=9 format=3 uid="uid://becgdypu0jdt"]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="2_player"]
+[ext_resource type="Script" path="res://scripts/spawner.gd" id="3_spawner"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
+size = Vector2(1264, 8)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_v"]
+size = Vector2(8, 704)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0, 0, 0, 0.75)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.3, 1, 0.7, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_main")
+
+[node name="ArenaBorder" type="Line2D" parent="."]
+width = 2.0
+default_color = Color(0.25, 0.55, 0.45, 1)
+
+[node name="ArenaWalls" type="StaticBody2D" parent="."]
+collision_layer = 4
+collision_mask = 0
+
+[node name="TopWall" type="CollisionShape2D" parent="ArenaWalls"]
+position = Vector2(640, 8)
+shape = SubResource("RectangleShape2D_wall_h")
+
+[node name="BottomWall" type="CollisionShape2D" parent="ArenaWalls"]
+position = Vector2(640, 712)
+shape = SubResource("RectangleShape2D_wall_h")
+
+[node name="LeftWall" type="CollisionShape2D" parent="ArenaWalls"]
+position = Vector2(8, 360)
+shape = SubResource("RectangleShape2D_wall_v")
+
+[node name="RightWall" type="CollisionShape2D" parent="ArenaWalls"]
+position = Vector2(1272, 360)
+shape = SubResource("RectangleShape2D_wall_v")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(640, 360)
+
+[node name="Player" parent="." instance=ExtResource("2_player")]
+position = Vector2(640, 360)
+
+[node name="Entities" type="Node2D" parent="."]
+
+[node name="Spawner" type="Node2D" parent="."]
+script = ExtResource("3_spawner")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="StartMenu" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Background" type="ColorRect" parent="UI/StartMenu"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.02, 0.05, 0.08, 0.92)
+
+[node name="VBox" type="VBoxContainer" parent="UI/StartMenu"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -80.0
+offset_right = 200.0
+offset_bottom = 80.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="Title" type="Label" parent="UI/StartMenu/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 1, 0.7, 1)
+theme_override_font_sizes/font_size = 48
+text = "ASTRO DEFENDER"
+horizontal_alignment = 1
+
+[node name="Prompt" type="Label" parent="UI/StartMenu/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 1, 0.9, 1)
+theme_override_font_sizes/font_size = 22
+text = "Press Any Key to Start"
+horizontal_alignment = 1
+
+[node name="Controls" type="Label" parent="UI/StartMenu/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.75, 0.65, 1)
+theme_override_font_sizes/font_size = 14
+text = "WASD/Arrows: Thrust  |  Mouse: Aim  |  Click: Shoot"
+horizontal_alignment = 1
+
+[node name="HUD" type="Control" parent="UI"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ScoreLabel" type="Label" parent="UI/HUD"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 12.0
+offset_right = 200.0
+offset_bottom = 40.0
+theme_override_colors/font_color = Color(0.3, 1, 0.7, 1)
+theme_override_font_sizes/font_size = 20
+text = "Score: 0"
+
+[node name="LivesLabel" type="Label" parent="UI/HUD"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 42.0
+offset_right = 200.0
+offset_bottom = 70.0
+theme_override_colors/font_color = Color(1, 0.6, 0.5, 1)
+theme_override_font_sizes/font_size = 20
+text = "Lives: 3"
+
+[node name="WaveLabel" type="Label" parent="UI/HUD"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 72.0
+offset_right = 200.0
+offset_bottom = 100.0
+theme_override_colors/font_color = Color(0.6, 0.85, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "Wave: 1"
+
+[node name="GameOverPanel" type="Control" parent="UI"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Background" type="ColorRect" parent="UI/GameOverPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.05, 0, 0.02, 0.85)
+
+[node name="Panel" type="Panel" parent="UI/GameOverPanel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -180.0
+offset_top = -100.0
+offset_right = 180.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="VBox" type="VBoxContainer" parent="UI/GameOverPanel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -160.0
+offset_top = -80.0
+offset_right = 160.0
+offset_bottom = 80.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="GameOverLabel" type="Label" parent="UI/GameOverPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.4, 0.35, 1)
+theme_override_font_sizes/font_size = 36
+text = "GAME OVER"
+horizontal_alignment = 1
+
+[node name="FinalScoreLabel" type="Label" parent="UI/GameOverPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.9, 1, 0.95, 1)
+theme_override_font_sizes/font_size = 22
+text = "Score: 0"
+horizontal_alignment = 1
+
+[node name="HighScoreLabel" type="Label" parent="UI/GameOverPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.85, 0.7, 1)
+theme_override_font_sizes/font_size = 18
+text = "High Score: 0"
+horizontal_alignment = 1
+
+[node name="RestartLabel" type="Label" parent="UI/GameOverPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.8, 0.75, 1)
+theme_override_font_sizes/font_size = 16
+text = "Press Any Key to Restart"
+horizontal_alignment = 1
