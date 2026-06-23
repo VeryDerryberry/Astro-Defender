@@ -171,9 +171,13 @@ func _probe_touch_thrust(playable: Rect2) -> void:
 	_push_touch(release)
 	await get_tree().physics_frame
 
+	var thrust_cleared := TouchInput.get_thrust_vector().length() < 0.01
 	print("RUNTIME touch_events_processed=%d" % TouchInput.touch_events_processed)
 	print("RUNTIME touch_thrust_peak=%f" % peak_speed)
+	print("RUNTIME touch_thrust_cleared=%s" % str(thrust_cleared).to_lower())
 
+	if not thrust_cleared:
+		_fail("touch thrust not cleared on finger release")
 	if thrust_during < 0.2:
 		_fail("touch thrust direction not set")
 	if peak_speed < 20.0:

@@ -3,7 +3,7 @@ set -euo pipefail
 
 PROJECT="/home/derc/Godot/VectorGame"
 GODOT="/home/derc/bin/godot"
-SCRATCH="${SCRATCH:-/tmp/grok-goal-24707ec209ef/implementer}"
+SCRATCH="${SCRATCH:-/tmp/grok-goal-98594fc3f297/implementer}"
 mkdir -p "$SCRATCH"
 
 echo "=== Astro Defender verification (plan VP) ==="
@@ -29,6 +29,7 @@ grep -q 'RUNTIME options_applied=.*enemies=6' "$SCRATCH/godot_launch_1.log" || {
 grep -q 'RUNTIME fire_rate_applied=0.100000' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: custom fire rate not applied"; exit 1; }
 grep -q 'RUNTIME touch_events_processed=' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: touch not processed"; exit 1; }
 grep -q 'RUNTIME touch_thrust_peak=' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: touch thrust not measured"; exit 1; }
+grep -q 'RUNTIME touch_thrust_cleared=true' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: touch thrust not cleared on release"; exit 1; }
 grep -q 'RUNTIME touch_shoot_score=100' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: touch shoot score"; exit 1; }
 grep -q 'RUNTIME sfx_played=' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: sfx not played"; exit 1; }
 grep -q 'RUNTIME music_looping=true' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: music not looping"; exit 1; }
