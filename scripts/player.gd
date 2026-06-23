@@ -45,9 +45,8 @@ func _physics_process(delta: float) -> void:
 	apply_movement(input_dir, delta)
 
 	var aim_pos: Vector2 = get_global_mouse_position()
-	var touch_aim = TouchInput.get_aim_world_position()
-	if touch_aim is Vector2:
-		aim_pos = touch_aim
+	if TouchInput.has_active_aim():
+		aim_pos = TouchInput.get_aim_world_position()
 
 	rotation = (aim_pos - global_position).angle() + PI / 2.0
 

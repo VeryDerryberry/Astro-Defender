@@ -23,14 +23,19 @@ if grep -qiE "Can't run project|fatal|SCRIPT ERROR|Parse Error" "$SCRATCH/godot_
 fi
 grep -q 'RUNTIME verify_exit=0' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: verify did not pass in launch 1"; exit 1; }
 grep -q 'RUNTIME game_started=true' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: game not started via input"; exit 1; }
+grep -q 'RUNTIME options_custom=true' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: custom options not set"; exit 1; }
 grep -q 'RUNTIME options_applied=' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: options not applied"; exit 1; }
+grep -q 'RUNTIME options_applied=.*enemies=6' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: custom enemy count not applied"; exit 1; }
+grep -q 'RUNTIME fire_rate_applied=0.100000' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: custom fire rate not applied"; exit 1; }
 grep -q 'RUNTIME touch_events_processed=' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: touch not processed"; exit 1; }
+grep -q 'RUNTIME touch_thrust_peak=' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: touch thrust not measured"; exit 1; }
+grep -q 'RUNTIME touch_shoot_score=100' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: touch shoot score"; exit 1; }
 grep -q 'RUNTIME sfx_played=' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: sfx not played"; exit 1; }
 grep -q 'RUNTIME music_looping=true' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: music not looping"; exit 1; }
-grep -q 'RUNTIME spawner_enemy_count=' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: spawner did not run"; exit 1; }
+grep -q 'RUNTIME spawner_enemy_count=6' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: spawner enemy count mismatch"; exit 1; }
 grep -q 'RUNTIME wall_right_inside=true' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: right wall confinement"; exit 1; }
 grep -q 'RUNTIME wall_left_inside=true' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: left wall confinement"; exit 1; }
-grep -q 'RUNTIME lives_after_hit=2' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: collision lives"; exit 1; }
+grep -q 'RUNTIME lives_after_hit=4' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: collision lives"; exit 1; }
 grep -q 'RUNTIME score_after_shot=100' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: projectile score"; exit 1; }
 
 WALL_VEL=$(grep '^RUNTIME wall_right_velocity=' "$SCRATCH/godot_launch_1.log" | tail -1 | cut -d= -f2)
@@ -71,10 +76,15 @@ grep -rq 'InputEventScreenTouch' "$PROJECT/scripts"
 grep -rq 'InputEventScreenDrag' "$PROJECT/scripts"
 grep -rq 'AudioStream' "$PROJECT/scripts"
 grep -rq 'fire_rate' "$PROJECT/scripts"
+grep -rq 'has_active_aim' "$PROJECT/scripts"
 test -f "$PROJECT/export_presets.cfg"
 grep -q 'platform="Android"' "$PROJECT/export_presets.cfg"
 ! grep -rE 'Sprite2D|TextureRect|AnimatedSprite' "$PROJECT/scenes" "$PROJECT/scripts" 2>/dev/null
 test -f "$PROJECT/scripts/headless_verify.gd"
+test -f "$PROJECT/scripts/game_options.gd"
+test -f "$PROJECT/scripts/touch_input.gd"
+test -f "$PROJECT/scripts/audio_manager.gd"
+test -f "$PROJECT/scripts/procedural_audio.gd"
 grep -q 'ArenaWalls' "$PROJECT/main.tscn"
 grep -q 'StaticBody2D' "$PROJECT/main.tscn"
 grep -q 'SHIP_HULL_RADIUS' "$PROJECT/scripts/game_logic.gd"
@@ -125,14 +135,13 @@ cat > "$SCRATCH/vp_evidence.txt" <<EOF
 VERIFY_EXIT_CODE=0
 VERIFY_WALL_VELOCITY=$WALL_VEL
 
-VP-1a: godot_launch_1.log — main.tscn with --verify
-  - verify_exit=0, options_applied, touch_events_processed, sfx_played, music_looping=true
-  - lives_after_hit=2, score_after_shot=100
+VP-1a: godot_launch_1.log — custom options (enemies=6,lives=5,fire_rate=0.10)
+  - touch_thrust_peak, touch_shoot_score=100, spawner_enemy_count=6
+  - lives_after_hit=4, verify_exit=0
 VP-1b: godot_launch_2.log — repeat verify launch
-VP-2: project.godot — GameOptions, TouchInput, AudioManager autoloads
-VP-3: source — screen touch, audio, options, export_presets.cfg Android
-VP-4: godot_final_1.log + godot_final_2.log — plain launches clean
-VP-5: export_presets.cfg present (APK build requires Android templates)
+VP-2/3: autoloads, touch/audio/options source present
+VP-4: plain launches clean
+VP-5: export_presets.cfg present
 
 Changed files: see changed_files_manifest.txt ($(wc -l < "$SCRATCH/changed_files_manifest.txt") git-tracked files)
 EOF

@@ -97,7 +97,8 @@ func _arena_center() -> Vector2:
 
 func _clear_entities() -> void:
 	for child in entities.get_children():
-		child.queue_free()
+		entities.remove_child(child)
+		child.free()
 
 
 func _on_state_changed(new_state: GameManager.State) -> void:
