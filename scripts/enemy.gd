@@ -2,6 +2,7 @@ extends Area2D
 
 const GameLogic := preload("res://scripts/game_logic.gd")
 const BASE_SPEED := 90.0
+const SCORE_VALUE := 100
 
 var velocity := Vector2.ZERO
 var speed_multiplier := 1.0
@@ -9,6 +10,12 @@ var target: Node2D
 
 @onready var body: Polygon2D = $Body
 @onready var outline: Line2D = $Outline
+
+
+func destroy(award_score: bool = true) -> void:
+	if award_score:
+		GameManager.add_score(SCORE_VALUE)
+	queue_free()
 
 
 func setup(spawn_pos: Vector2, target_node: Node2D, multiplier: float = 1.0) -> void:

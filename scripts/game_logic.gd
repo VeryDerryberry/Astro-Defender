@@ -31,6 +31,14 @@ static func playable_rect(viewport_size: Vector2, hull_radius: float = SHIP_HULL
 	return Rect2(border.position + pad, border.size - pad * 2.0)
 
 
+static func is_inside_playable(
+	pos: Vector2,
+	viewport_size: Vector2,
+	hull_radius: float = SHIP_HULL_RADIUS
+) -> bool:
+	return playable_rect(viewport_size, hull_radius).has_point(pos)
+
+
 static func arena_border_points(viewport_size: Vector2) -> PackedVector2Array:
 	var rect := arena_rect(viewport_size)
 	var top_left := rect.position
@@ -120,12 +128,38 @@ static func wave_spawn_positions(viewport_size: Vector2, count: int, margin: flo
 	return positions
 
 
-static func edge_index(pos: Vector2, viewport_size: Vector2, margin: float = 30.0) -> int:
+static func configure_wall_shapes(walls: StaticBody2D, viewport_size: Vector2) -> void:
+	var playable := playable_rect(viewport_size)
+	var center_x := playable.position.x + playable.size.x * 0.5
+	var center_y := playable.position.y + playable.size.y * 0.5
+
+	var top: CollisionShape2D = walls.get_node("TopWall")
+	var bottom: CollisionShape2D = walls.get_node("BottomWall")
+	var left: CollisionShape2D = walls.get_node("LeftWall")
+	var right: CollisionShape2D = walls.get_node("RightWall")
+
+	top.position = Vector2(center_x, playable.position.y)
+	bottom.position = Vector2(center_x, playable.position.y + playable.size.y)
+	left.position = Vector2(playable.position.x, center_y)
+	right.position = Vector2(playable.position.x + playable.size.x, center_y)
+
+	var h_shape := RectangleShape2D.new()
+	h_shape.size = Vector2(playable.size.x, 4.0)
+	top.shape = h_shape
+	bottom.shape = h_shape.duplicate()
+
+	var v_shape := RectangleShape2D.new()
+	v_shape.size = Vector2(4.0, playable.size.y)
+	left.shape = v_shape
+	right.shape = v_shape.duplicate()
+
+
+static func edge_index(pos: Vector2, viewport_size: Vector2, _margin: float = 30.0) -> int:
 	var arena := arena_rect(viewport_size)
-	if pos.y < arena.position.y - margin:
+	if pos.y < arena.position.y:
 		return 0
-	if pos.x > arena.position.x + arena.size.x + margin:
+	if pos.x > arena.position.x + arena.size.x:
 		return 1
-	if pos.y > arena.position.y + arena.size.y + margin:
+	if pos.y > arena.position.y + arena.size.y:
 		return 2
 	return 3

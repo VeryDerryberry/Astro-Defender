@@ -3,6 +3,7 @@ extends Node2D
 const GameLogic := preload("res://scripts/game_logic.gd")
 
 @onready var arena_border: Line2D = $ArenaBorder
+@onready var arena_walls: StaticBody2D = $ArenaWalls
 @onready var player: CharacterBody2D = $Player
 @onready var spawner: Node2D = $Spawner
 @onready var entities: Node2D = $Entities
@@ -21,6 +22,7 @@ const GameLogic := preload("res://scripts/game_logic.gd")
 func _ready() -> void:
 	var viewport_size := get_viewport_rect().size
 	arena_border.points = GameLogic.arena_border_points(viewport_size)
+	GameLogic.configure_wall_shapes(arena_walls, viewport_size)
 	ArenaContext.register(player, entities)
 	GameManager.state_changed.connect(_on_state_changed)
 	GameManager.score_changed.connect(_on_score_changed)
