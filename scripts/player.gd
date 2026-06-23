@@ -1,10 +1,9 @@
 extends CharacterBody2D
 
 const GameLogic := preload("res://scripts/game_logic.gd")
-const THRUST_FORCE := 280.0
-const MAX_SPEED := 320.0
+const BASE_THRUST_FORCE := 280.0
+const BASE_MAX_SPEED := 320.0
 const FRICTION := 4.5
-const SHOOT_COOLDOWN := 0.18
 
 var projectile_scene: PackedScene
 var can_shoot := true
@@ -19,12 +18,19 @@ var invincible := false
 
 func _ready() -> void:
 	projectile_scene = preload("res://scenes/projectile.tscn")
-	shoot_timer.wait_time = SHOOT_COOLDOWN
 	hit_area.area_entered.connect(_on_hit_area_entered)
+	_apply_fire_rate()
+
+
+func _apply_fire_rate() -> void:
+	shoot_timer.wait_time = GameOptions.fire_rate
 
 
 func apply_movement(input_dir: Vector2, delta: float) -> void:
-	velocity = GameLogic.apply_thrust(velocity, input_dir, delta, THRUST_FORCE, MAX_SPEED, FRICTION)
+	var speed_scale := GameOptions.player_speed_multiplier
+	var thrust := BASE_THRUST_FORCE * speed_scale
+	var max_speed := BASE_MAX_SPEED * speed_scale
+	velocity = GameLogic.apply_thrust(velocity, input_dir, delta, thrust, max_speed, FRICTION)
 
 
 func _physics_process(delta: float) -> void:
@@ -32,14 +38,23 @@ func _physics_process(delta: float) -> void:
 		return
 
 	var input_dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	var touch_thrust := TouchInput.get_thrust_vector()
+	if touch_thrust.length_squared() > 0.01:
+		input_dir = touch_thrust
+
 	apply_movement(input_dir, delta)
 
-	var mouse_pos := get_global_mouse_position()
-	rotation = (mouse_pos - global_position).angle() + PI / 2.0
+	var aim_pos: Vector2 = get_global_mouse_position()
+	var touch_aim = TouchInput.get_aim_world_position()
+	if touch_aim is Vector2:
+		aim_pos = touch_aim
+
+	rotation = (aim_pos - global_position).angle() + PI / 2.0
 
 	move_and_slide()
 
-	if Input.is_action_pressed("shoot") and can_shoot:
+	var wants_shoot := Input.is_action_pressed("shoot") or TouchInput.is_shoot_pressed()
+	if wants_shoot and can_shoot:
 		_shoot()
 
 
@@ -56,6 +71,7 @@ func _shoot() -> void:
 		projectile.queue_free()
 		return
 	container.add_child(projectile)
+	AudioManager.play_shoot()
 
 
 func take_hit() -> void:
@@ -65,6 +81,7 @@ func take_hit() -> void:
 	invincible = true
 	invincibility_timer.start()
 	GameManager.lose_life()
+	AudioManager.play_hit()
 
 	if GameManager.lives > 0:
 		velocity = Vector2.ZERO

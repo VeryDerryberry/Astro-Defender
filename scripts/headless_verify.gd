@@ -35,7 +35,9 @@ func run() -> void:
 
 	print("RUNTIME game_started=true")
 	print("RUNTIME spawner_active=%s" % str(_spawner.process_mode == Node.PROCESS_MODE_INHERIT).to_lower())
+	print("RUNTIME music_looping=%s" % str(AudioManager.music_looping).to_lower())
 
+	await _probe_touch_input()
 	await _wait_physics(6)
 	await _probe_spawner_wave(viewport_size)
 	_halt_spawner()
@@ -176,6 +178,8 @@ func _probe_projectile_shoot() -> void:
 	_player.can_shoot = true
 	_player.velocity = Vector2.ZERO
 	_player.global_position = GameLogic.playable_rect(_main.get_viewport_rect().size).get_center()
+	TouchInput.reset_state()
+	Input.action_release("shoot")
 
 	for child in _entities.get_children():
 		child.queue_free()
@@ -202,5 +206,38 @@ func _probe_projectile_shoot() -> void:
 	Input.action_release("shoot")
 
 	print("RUNTIME score_after_shot=%d" % GameManager.score)
+	print("RUNTIME sfx_played=%d" % AudioManager.sfx_played_count)
 	if GameManager.score != score_before + 100:
 		_fail("projectile collision did not award score via shoot input")
+	if AudioManager.sfx_played_count < 1:
+		_fail("sfx not played during verify")
+
+
+func _probe_touch_input() -> void:
+	var size := _main.get_viewport_rect().size
+	var touch_before := TouchInput.touch_events_processed
+
+	var touch := InputEventScreenTouch.new()
+	touch.index = 0
+	touch.position = Vector2(size.x * 0.75, size.y * 0.5)
+	touch.pressed = true
+	_main.get_viewport().push_input(touch)
+	await get_tree().physics_frame
+
+	var drag := InputEventScreenDrag.new()
+	drag.index = 0
+	drag.position = Vector2(size.x * 0.2, size.y * 0.7)
+	drag.relative = Vector2(0, -40)
+	_main.get_viewport().push_input(drag)
+	await get_tree().physics_frame
+
+	var release := InputEventScreenTouch.new()
+	release.index = 0
+	release.position = touch.position
+	release.pressed = false
+	_main.get_viewport().push_input(release)
+	await get_tree().physics_frame
+
+	print("RUNTIME touch_events_processed=%d" % TouchInput.touch_events_processed)
+	if TouchInput.touch_events_processed <= touch_before:
+		_fail("screen touch events were not processed")

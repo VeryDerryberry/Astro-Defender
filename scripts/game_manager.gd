@@ -9,7 +9,6 @@ var wave: int = 1
 var high_score: int = 0
 
 const HIGH_SCORE_PATH := "user://highscore.save"
-const STARTING_LIVES := 3
 
 signal state_changed(new_state: State)
 signal score_changed(new_score: int)
@@ -23,7 +22,7 @@ func _ready() -> void:
 
 func start_game() -> void:
 	score = 0
-	lives = STARTING_LIVES
+	lives = GameOptions.starting_lives
 	wave = 1
 	_set_state(State.PLAYING)
 	score_changed.emit(score)

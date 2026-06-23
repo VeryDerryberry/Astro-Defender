@@ -1,7 +1,7 @@
 extends Area2D
 
 const GameLogic := preload("res://scripts/game_logic.gd")
-const SPEED := 520.0
+const SPEED := 620.0
 const LIFETIME := 1.8
 
 @onready var line: Line2D = $Line2D

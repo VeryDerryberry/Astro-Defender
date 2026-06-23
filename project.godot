@@ -19,12 +19,16 @@ config/icon="res://icon.svg"
 
 GameManager="*res://scripts/game_manager.gd"
 ArenaContext="*res://scripts/arena_context.gd"
+GameOptions="*res://scripts/game_options.gd"
+TouchInput="*res://scripts/touch_input.gd"
+AudioManager="*res://scripts/audio_manager.gd"
 
 [display]
 
 window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
+window/handheld/orientation=1
 
 [input]
 
@@ -65,4 +69,3 @@ shoot={
 [rendering]
 
 rendering_device/driver.windows="d3d12"
-renderer/rendering_method="forward_plus"

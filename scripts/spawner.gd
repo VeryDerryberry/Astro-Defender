@@ -36,9 +36,9 @@ func _on_state_changed(new_state: GameManager.State) -> void:
 
 
 func _reset_difficulty() -> void:
-	enemies_per_wave = 4
-	spawn_interval = 1.2
-	speed_multiplier = 1.0
+	enemies_per_wave = GameOptions.enemies_per_wave
+	spawn_interval = GameOptions.spawn_interval
+	speed_multiplier = GameOptions.enemy_speed_multiplier
 
 
 func _advance_wave() -> void:

@@ -15,6 +15,7 @@ var target: Node2D
 func destroy(award_score: bool = true) -> void:
 	if award_score:
 		GameManager.add_score(SCORE_VALUE)
+		AudioManager.play_destroy()
 	queue_free()
 
 
