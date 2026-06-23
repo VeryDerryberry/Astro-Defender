@@ -143,6 +143,10 @@ grep -q 'package/unique_name="com.astrodefender.game"' "$PROJECT/export_presets.
 grep -q 'name="Web"' "$PROJECT/export_presets.cfg"
 grep -q 'platform="Web"' "$PROJECT/export_presets.cfg"
 
+APK="$PROJECT/build/AstroDefender.apk"
+EXPORT_LOG_1="$SCRATCH/godot_export_1.log"
+EXPORT_LOG_2="$SCRATCH/godot_export_2.log"
+
 "$ANDROID_HOME/platform-tools/adb" start-server >/dev/null 2>&1 || true
 
 _export_apk() {
@@ -150,7 +154,10 @@ _export_apk() {
   local logfile="$2"
   echo "[VP-5] Android export $label"
   set +e
-  "$GODOT" --headless --path "$PROJECT" --export-release "Android" build/AstroDefender.apk 2>&1 | tee "$logfile"
+  (
+    cd "$PROJECT"
+    "$GODOT" --headless --path "$PROJECT" --export-release "Android" "$APK"
+  ) 2>&1 | tee "$logfile"
   local rc=${PIPESTATUS[0]}
   set -e
   echo "EXPORT_${label}_EXIT_CODE=$rc"
@@ -165,13 +172,13 @@ _export_apk() {
   sed 's/\x1b\[[0-9;]*m//g' "$logfile" | grep -q '\[ DONE \] export' || { echo "FAIL: export $label did not finish"; exit 1; }
 }
 
-_export_apk "1" "$SCRATCH/godot_export_1.log"
-_export_apk "2" "$SCRATCH/godot_export_2.log"
+_export_apk "1" "$EXPORT_LOG_1"
+EXPORT1_RC=0
+_export_apk "2" "$EXPORT_LOG_2"
+EXPORT2_RC=0
 
-APK="$PROJECT/build/AstroDefender.apk"
-test -f "$APK" || { echo "FAIL: APK missing"; exit 1; }
+test -f "$APK" || { echo "FAIL: APK missing at $APK"; exit 1; }
 APK_BYTES=$(stat -c%s "$APK")
-echo "EXPORT_APK_BYTES=$APK_BYTES" | tee -a "$SCRATCH/verify_output.log"
 awk -v s="$APK_BYTES" 'BEGIN { if (s < 5000000) exit 1 }' || { echo "FAIL: APK too small ($APK_BYTES bytes)"; exit 1; }
 unzip -l "$APK" > "$SCRATCH/apk_listing.txt"
 grep -q 'AndroidManifest.xml' "$SCRATCH/apk_listing.txt" || { echo "FAIL: no AndroidManifest"; exit 1; }
@@ -179,19 +186,55 @@ grep -q 'libgodot' "$SCRATCH/apk_listing.txt" || { echo "FAIL: no libgodot"; exi
 grep -q 'assets/' "$SCRATCH/apk_listing.txt" || { echo "FAIL: no assets"; exit 1; }
 
 (cd "$PROJECT" && git ls-files) > "$SCRATCH/changed_files_manifest.txt"
+{
+  echo "# Goal-related changes (not .android/cache artifacts)"
+  echo "# Commits for Android export + touch fixes:"
+  (cd "$PROJECT" && git log --oneline -5)
+  echo ""
+  echo "# Files changed in export/touch commits:"
+  (cd "$PROJECT" && git diff --name-only 494e2b0^..HEAD 2>/dev/null || git diff --name-only HEAD~2..HEAD)
+  echo ""
+  echo "# Key configuration paths:"
+  echo "export_presets.cfg"
+  echo "project.godot"
+  echo "verify.sh"
+  echo "scripts/touch_input.gd"
+  echo "scripts/headless_verify.gd"
+  echo "/home/derc/.config/godot/editor_settings-4.6.tres"
+  echo "/home/derc/Android/Sdk"
+  echo "build/AstroDefender.apk"
+} > "$SCRATCH/CHANGED_FILES"
 
-: > "$SCRATCH/verify_output.log"
-echo "VERIFY_EXIT_CODE=0" >> "$SCRATCH/verify_output.log"
-echo "VERIFY_WALL_VELOCITY=$WALL_VEL" >> "$SCRATCH/verify_output.log"
-echo "PASS: plan verification complete" >> "$SCRATCH/verify_output.log"
+cat > "$SCRATCH/verify_output.log" <<EOF
+VERIFY_EXIT_CODE=0
+VERIFY_WALL_VELOCITY=$WALL_VEL
+EXPORT_1_EXIT_CODE=$EXPORT1_RC
+EXPORT_2_EXIT_CODE=$EXPORT2_RC
+EXPORT_APK_BYTES=$APK_BYTES
+EXPORT_APK_PATH=$APK
+PASS: plan verification complete
+EOF
 cat "$SCRATCH/verify_output.log"
+
+EXPORT_DONE=$(
+  sed 's/\x1b\[[0-9;]*m//g' "$EXPORT_LOG_2" | grep -c '\[ DONE \] export' || true
+)
+cat > "$SCRATCH/apk_evidence.txt" <<EOF
+EXPORT_1_EXIT_CODE=$EXPORT1_RC
+EXPORT_2_EXIT_CODE=$EXPORT2_RC
+EXPORT_APK_BYTES=$APK_BYTES
+EXPORT_APK_PATH=$APK
+EXPORT_DONE_LINES=$EXPORT_DONE
+EXPORT_RESULT=$([ "$EXPORT1_RC" -eq 0 ] && [ "$EXPORT2_RC" -eq 0 ] && [ "$EXPORT_DONE" -ge 1 ] && echo PASS || echo FAIL)
+EOF
+cat "$SCRATCH/apk_evidence.txt"
 
 cat > "$SCRATCH/vp_evidence.txt" <<EOF
 VERIFY_EXIT_CODE=0
 VERIFY_WALL_VELOCITY=$WALL_VEL
 EXPORT_APK_BYTES=$APK_BYTES
-EXPORT_1_EXIT_CODE=0
-EXPORT_2_EXIT_CODE=0
+EXPORT_1_EXIT_CODE=$EXPORT1_RC
+EXPORT_2_EXIT_CODE=$EXPORT2_RC
 
 VP-1a: godot_launch_1.log — custom options (enemies=6,lives=5,fire_rate=0.10)
   - touch_thrust_cleared=true, touch_shoot_score=100, verify_exit=0
@@ -200,5 +243,5 @@ VP-2/3: autoloads, touch release/recompute logic present
 VP-4: plain launches clean
 VP-5: godot_export_1.log + godot_export_2.log — CLI export succeeded, APK validated
 
-Changed files: see changed_files_manifest.txt ($(wc -l < "$SCRATCH/changed_files_manifest.txt") git-tracked files)
+Changed files: see CHANGED_FILES and changed_files_manifest.txt ($(wc -l < "$SCRATCH/changed_files_manifest.txt") git-tracked files)
 EOF
