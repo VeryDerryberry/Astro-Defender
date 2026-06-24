@@ -19,7 +19,7 @@ rm -f "$SCRATCH"/godot_export_1.log "$SCRATCH"/godot_export_2.log
 
 _read_preset_prop() {
   local key="$1"
-  grep "^${key}=" "$PROJECT/export_presets.cfg" | head -1 | sed 's/.*="\(.*\)"/\1/'
+  grep "^${key}=" "$PROJECT/export_presets.cfg" | head -1 | sed -E 's/^[^=]+=//; s/^"//; s/"$//'
 }
 
 _append_apk_proof_to_log() {
