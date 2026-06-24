@@ -4,9 +4,12 @@ set -euo pipefail
 
 PROJECT="/home/derc/Godot/VectorGame"
 GODOT="/home/derc/bin/godot"
-SCRATCH="${SCRATCH:-/tmp/grok-goal-98594fc3f297/implementer}"
+SCRATCH="${SCRATCH:-/tmp/grok-goal-220491e2a408/implementer}"
 ANDROID_HOME="${ANDROID_HOME:-/home/derc/Android/Sdk}"
 JAVA_HOME="${JAVA_HOME:-/home/derc/.local/jdk-17.0.14+7}"
+KEYSTORE="${KEYSTORE:-/home/derc/.local/share/godot/keystores/debug.keystore}"
+KEYSTORE_USER="${KEYSTORE_USER:-androiddebugkey}"
+KEYSTORE_PASS="${KEYSTORE_PASS:-android}"
 
 export ANDROID_HOME JAVA_HOME
 export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
@@ -79,6 +82,43 @@ _reinstall_android_template() {
   echo "OK: android build template reinstalled"
 }
 
+_patch_launcher_manifest() {
+  local manifest="$PROJECT/android/build/src/release/AndroidManifest.xml"
+  test -f "$manifest" || { echo "FAIL: missing $manifest"; exit 1; }
+  cp "$manifest" "$SCRATCH/release_manifest_before_patch.xml"
+  if grep -q 'android.intent.category.LAUNCHER' "$manifest"; then
+    echo "OK: LAUNCHER already present in release manifest"
+  else
+    sed -i '/android.intent.category.DEFAULT/a\                <category android:name="android.intent.category.LAUNCHER" />' "$manifest"
+    echo "OK: patched LAUNCHER into release manifest"
+  fi
+  grep -A6 'GodotAppLauncher' "$manifest" | tee "$SCRATCH/release_manifest_patched_snippet.txt"
+}
+
+_reassemble_apk() {
+  local label="$1"
+  local gradle_apk="$PROJECT/android/build/build/outputs/apk/standard/release/android_release.apk"
+  (
+    cd "$PROJECT/android/build"
+    ./gradlew assembleStandardRelease \
+      -Pperform_signing=true \
+      -Prelease_keystore_file="$KEYSTORE" \
+      -Prelease_keystore_password="$KEYSTORE_PASS" \
+      -Prelease_keystore_alias="$KEYSTORE_USER"
+  ) 2>&1 | tee "$SCRATCH/gradle_reassemble_${label}.log"
+  test -f "$gradle_apk" || { echo "FAIL: gradle APK missing at $gradle_apk"; exit 1; }
+  cp "$gradle_apk" "$PROJECT/build/AstroDefender.apk"
+  echo "OK: copied gradle APK to build/AstroDefender.apk"
+}
+
+_finalize_apk_with_launcher() {
+  local label="$1"
+  echo "[manifest] patch LAUNCHER + reassemble ($label)"
+  _patch_launcher_manifest
+  _reassemble_apk "$label"
+  "$PROJECT/scripts/verify_launcher_manifest.sh" "$PROJECT/build/AstroDefender.apk"
+}
+
 echo "[clean] removing prior APK and export caches for provable full export"
 rm -f "$PROJECT/build/AstroDefender.apk"
 rm -rf "$PROJECT/.godot/exported"
@@ -98,6 +138,8 @@ if grep -qiE 'ERROR: (Cannot export|Project export for preset)' "$SCRATCH/godot_
 fi
 sed 's/\x1b\[[0-9;]*m//g' "$SCRATCH/godot_export_1.log" | grep -q '\[ DONE \] export' \
   || { echo "FAIL: export 1 missing DONE"; exit 1; }
+
+_finalize_apk_with_launcher export_1
 
 APK="$PROJECT/build/AstroDefender.apk"
 _append_apk_proof_to_log "$SCRATCH/godot_export_1.log" "$APK"
@@ -127,6 +169,8 @@ fi
 sed 's/\x1b\[[0-9;]*m//g' "$SCRATCH/godot_export_2.log" | grep -q '\[ DONE \] export' \
   || { echo "FAIL: export 2 missing DONE"; exit 1; }
 
+_finalize_apk_with_launcher export_2
+
 _append_apk_proof_to_log "$SCRATCH/godot_export_2.log" "$APK"
 echo "EXPORT_2_EXIT_CODE=$EXPORT_2_EXIT_CODE" >> "$SCRATCH/apk_evidence.txt"
 _validate_export_log "$SCRATCH/godot_export_2.log" "EXPORT_2" "$APK"
@@ -143,9 +187,12 @@ grep -q 'AndroidManifest.xml' "$SCRATCH/apk_listing.txt"
 grep -q 'libgodot' "$SCRATCH/apk_listing.txt"
 grep -q 'assets/' "$SCRATCH/apk_listing.txt"
 
+"$PROJECT/scripts/verify_launcher_manifest.sh" "$APK"
+
 cat >> "$SCRATCH/apk_evidence.txt" <<EOF
 EXPORT_APK_BYTES=$APK_BYTES
 EXPORT_APK_PATH=$APK
+LAUNCHER_MANIFEST_CHECK=PASS
 EXPORT_RESULT=PASS
 EOF
 cat "$SCRATCH/apk_evidence.txt"
