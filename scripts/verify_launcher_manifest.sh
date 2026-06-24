@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Verify APK: package, launchable badging OR xmltree LAUNCHER on GodotAppLauncher alias.
+# Verify APK: launchable-activity in badging + GodotAppLauncher alias LAUNCHER in xmltree.
 set -euo pipefail
 
 APK="${1:-/home/derc/Godot/VectorGame/build/AstroDefender.apk}"
@@ -41,9 +41,10 @@ if [ "$ACTUAL_PKG" != "$EXPECTED_PKG" ]; then
   exit 1
 fi
 
-BADGING_OK=no
-if grep -qE 'launchable|LAUNCHER' "$OUT"; then
-  BADGING_OK=yes
+if ! grep -q 'launchable-activity' "$OUT"; then
+  echo "FAIL: aapt badging missing launchable-activity line"
+  grep -iE 'launchable|launcher|other-activ' "$OUT" || true
+  exit 1
 fi
 
 if ! grep -q 'GodotAppLauncher' "$ALIAS_BLOCK"; then
@@ -63,19 +64,12 @@ if ! grep -A20 'GodotAppLauncher' "$XMLTREE" | grep -q 'android:exported(0x01010
   exit 1
 fi
 
-if [ "$BADGING_OK" = "no" ]; then
-  echo "OK: badging has no launchable|LAUNCHER line; xmltree alias filter satisfies plan OR clause"
-fi
-
-LAUNCHABLE_LINE=$(grep -E 'launchable|LAUNCHER' "$OUT" | head -1 || true)
+LAUNCHABLE_LINE=$(grep 'launchable-activity' "$OUT" | head -1)
 ALIAS_LAUNCHER_LINE=$(grep 'android.intent.category.LAUNCHER' "$ALIAS_BLOCK" | head -1)
 
 echo "LAUNCHER_MANIFEST_CHECK=PASS" | tee "$SCRATCH/launcher_manifest_evidence.txt"
 echo "APK=$APK" | tee -a "$SCRATCH/launcher_manifest_evidence.txt"
 echo "PACKAGE=$ACTUAL_PKG" | tee -a "$SCRATCH/launcher_manifest_evidence.txt"
-echo "BADGING_LAUNCHABLE_OR_LAUNCHER=$BADGING_OK" | tee -a "$SCRATCH/launcher_manifest_evidence.txt"
-if [ -n "$LAUNCHABLE_LINE" ]; then
-  echo "$LAUNCHABLE_LINE" | tee -a "$SCRATCH/launcher_manifest_evidence.txt"
-fi
+echo "$LAUNCHABLE_LINE" | tee -a "$SCRATCH/launcher_manifest_evidence.txt"
 echo "$ALIAS_LAUNCHER_LINE" | tee -a "$SCRATCH/launcher_manifest_evidence.txt"
 echo "PASS: launcher manifest verified"
