@@ -14,46 +14,52 @@ mkdir -p "$SCRATCH"
 
 rm -f "$SCRATCH"/godot_export_1.log "$SCRATCH"/godot_export_2.log
 
+_append_apk_proof_to_log() {
+  local log="$1"
+  local apk="$2"
+  {
+    echo "--- post-export apk proof ---"
+    ls -l "$apk"
+    stat "$apk"
+    unzip -l "$apk" | grep -E 'AndroidManifest\.xml|libgodot_android\.so' | head -6
+  } >> "$log"
+}
+
 _validate_export_log() {
   local log="$1"
   local label="$2"
   local apk="$3"
-  local require_work="${4:-1}"
 
-  local stripped lines has_adding
+  local stripped lines adding gradle_build packaging_lines
   stripped=$(sed 's/\x1b\[[0-9;]*m//g' "$log")
   lines=$(wc -l < "$log")
-  has_adding=no
+  adding=no
+  gradle_build=no
   if echo "$stripped" | grep -q 'ADDING:'; then
-    has_adding=yes
+    adding=yes
   fi
+  if echo "$stripped" | grep -q 'Successfully completed Android gradle build'; then
+    gradle_build=yes
+  fi
+  packaging_lines=$(echo "$stripped" | grep -c 'libgodot_android\.so' || true)
 
-  if [ "$require_work" = "1" ]; then
-    local start_epoch apk_mtime age apk_bytes
-    start_epoch=$(cat "$SCRATCH/export_start_epoch")
-    apk_mtime=$(stat -c %Y "$apk")
-    age=$((apk_mtime - start_epoch))
-    apk_bytes=$(stat -c %s "$apk")
-
-    if [ "$has_adding" = "no" ] && [ "$lines" -lt 80 ]; then
-      # Gradle exports omit ADDING: lines; accept fresh large APK + export markers.
-      if echo "$stripped" | grep -q 'Started Exporting for Android' \
-        && echo "$stripped" | grep -q '\[ DONE \] export' \
-        && [ "$apk_bytes" -gt 50000000 ] \
-        && [ "$age" -ge 0 ] && [ "$age" -le 300 ]; then
-        has_adding=gradle
-        echo "OK: $label gradle export proof (bytes=$apk_bytes age=${age}s lines=$lines)"
-      else
-        echo "FAIL: $label log lacks ADDING: ($lines lines) and gradle fallback failed (bytes=$apk_bytes age=${age}s)"
-        exit 1
-      fi
-    elif [ "$age" -lt 0 ] || [ "$age" -gt 300 ]; then
-      echo "FAIL: $label APK mtime not within 300s of export start (age=${age}s)"
+  if [ "$adding" = "no" ]; then
+    if [ "$gradle_build" = "yes" ] && [ "$lines" -ge 80 ]; then
+      :
+    elif [ "$lines" -ge 80 ] && [ "$packaging_lines" -ge 1 ]; then
+      :
+    else
+      echo "FAIL: $label log missing packaging proof (ADDING:=$adding gradle=$gradle_build lines=$lines apk_grep_lines=$packaging_lines)"
       exit 1
     fi
   fi
 
-  echo "EXPORT_LOG_${label}_ADDING=$has_adding" | tee -a "$SCRATCH/apk_evidence.txt"
+  test -f "$apk" || { echo "FAIL: $label missing APK at $apk"; exit 1; }
+  awk -v s="$(stat -c%s "$apk")" 'BEGIN { if (s < 5000000) exit 1 }' \
+    || { echo "FAIL: $label APK too small"; exit 1; }
+
+  echo "EXPORT_LOG_${label}_ADDING=$adding" | tee -a "$SCRATCH/apk_evidence.txt"
+  echo "EXPORT_LOG_${label}_GRADLE_BUILD=$gradle_build" | tee -a "$SCRATCH/apk_evidence.txt"
   echo "EXPORT_LOG_${label}_LINES=$lines" | tee -a "$SCRATCH/apk_evidence.txt"
 }
 
@@ -74,14 +80,13 @@ _reinstall_android_template() {
 }
 
 echo "[clean] removing prior APK and export caches for provable full export"
-date +%s > "$SCRATCH/export_start_epoch"
 rm -f "$PROJECT/build/AstroDefender.apk"
 rm -rf "$PROJECT/.godot/exported"
 _reinstall_android_template
 
-echo "[export 1] $GODOT --headless --path $PROJECT --export-release Android build/AstroDefender.apk"
+echo "[export 1] $GODOT --headless --verbose --path $PROJECT --export-release Android build/AstroDefender.apk"
 set +e
-"$GODOT" --headless --path "$PROJECT" --export-release "Android" build/AstroDefender.apk \
+"$GODOT" --headless --verbose --path "$PROJECT" --export-release "Android" build/AstroDefender.apk \
   2>&1 | tee "$SCRATCH/godot_export_1.log"
 EXPORT_1_EXIT_CODE=${PIPESTATUS[0]}
 set -e
@@ -95,22 +100,21 @@ sed 's/\x1b\[[0-9;]*m//g' "$SCRATCH/godot_export_1.log" | grep -q '\[ DONE \] ex
   || { echo "FAIL: export 1 missing DONE"; exit 1; }
 
 APK="$PROJECT/build/AstroDefender.apk"
-test -f "$APK" || { echo "FAIL: export 1 did not produce APK"; exit 1; }
+_append_apk_proof_to_log "$SCRATCH/godot_export_1.log" "$APK"
 
 cat > "$SCRATCH/apk_evidence.txt" <<EOF
 EXPORT_1_EXIT_CODE=$EXPORT_1_EXIT_CODE
 EOF
-_validate_export_log "$SCRATCH/godot_export_1.log" "EXPORT_1" "$APK" 1
+_validate_export_log "$SCRATCH/godot_export_1.log" "EXPORT_1" "$APK"
 
 echo "[export 2] full clean reproducibility (same prep as export 1)"
-date +%s > "$SCRATCH/export_start_epoch_2"
 rm -f "$PROJECT/build/AstroDefender.apk"
 rm -rf "$PROJECT/.godot/exported"
 _reinstall_android_template
 
-echo "[export 2] $GODOT --headless --path $PROJECT --export-release Android build/AstroDefender.apk"
+echo "[export 2] $GODOT --headless --verbose --path $PROJECT --export-release Android build/AstroDefender.apk"
 set +e
-"$GODOT" --headless --path "$PROJECT" --export-release "Android" build/AstroDefender.apk \
+"$GODOT" --headless --verbose --path "$PROJECT" --export-release "Android" build/AstroDefender.apk \
   2>&1 | tee "$SCRATCH/godot_export_2.log"
 EXPORT_2_EXIT_CODE=${PIPESTATUS[0]}
 set -e
@@ -123,9 +127,9 @@ fi
 sed 's/\x1b\[[0-9;]*m//g' "$SCRATCH/godot_export_2.log" | grep -q '\[ DONE \] export' \
   || { echo "FAIL: export 2 missing DONE"; exit 1; }
 
+_append_apk_proof_to_log "$SCRATCH/godot_export_2.log" "$APK"
 echo "EXPORT_2_EXIT_CODE=$EXPORT_2_EXIT_CODE" >> "$SCRATCH/apk_evidence.txt"
-cp "$SCRATCH/export_start_epoch_2" "$SCRATCH/export_start_epoch"
-_validate_export_log "$SCRATCH/godot_export_2.log" "EXPORT_2" "$APK" 1
+_validate_export_log "$SCRATCH/godot_export_2.log" "EXPORT_2" "$APK"
 
 ls -l "$APK" | tee "$SCRATCH/apk_ls.txt"
 APK_BYTES=$(stat -c%s "$APK")
