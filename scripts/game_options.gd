@@ -3,14 +3,14 @@ extends Node
 signal options_changed
 
 const DEFAULT_FIRE_RATE := 0.18
-const DEFAULT_LIVES := 3
-const DEFAULT_ENEMIES := 4
+const DEFAULT_HEALTH := 20
+const DEFAULT_ENEMIES := 6
 const DEFAULT_ENEMY_SPEED := 1.0
 const DEFAULT_PLAYER_SPEED := 1.0
 const DEFAULT_SPAWN_INTERVAL := 1.2
 
 var fire_rate: float = DEFAULT_FIRE_RATE
-var starting_lives: int = DEFAULT_LIVES
+var starting_health: int = DEFAULT_HEALTH
 var enemies_per_wave: int = DEFAULT_ENEMIES
 var enemy_speed_multiplier: float = DEFAULT_ENEMY_SPEED
 var player_speed_multiplier: float = DEFAULT_PLAYER_SPEED
@@ -19,7 +19,7 @@ var spawn_interval: float = DEFAULT_SPAWN_INTERVAL
 
 func reset_defaults() -> void:
 	fire_rate = DEFAULT_FIRE_RATE
-	starting_lives = DEFAULT_LIVES
+	starting_health = DEFAULT_HEALTH
 	enemies_per_wave = DEFAULT_ENEMIES
 	enemy_speed_multiplier = DEFAULT_ENEMY_SPEED
 	player_speed_multiplier = DEFAULT_PLAYER_SPEED
@@ -29,10 +29,10 @@ func reset_defaults() -> void:
 
 func summary() -> String:
 	return (
-		"fire_rate=%.2f,lives=%d,enemies=%d,enemy_spd=%.1f,player_spd=%.1f,spawn=%.1f"
+		"fire_rate=%.2f,health=%d,enemies=%d,enemy_spd=%.1f,player_spd=%.1f,spawn=%.1f"
 		% [
 			fire_rate,
-			starting_lives,
+			starting_health,
 			enemies_per_wave,
 			enemy_speed_multiplier,
 			player_speed_multiplier,
@@ -46,8 +46,8 @@ func adjust_fire_rate(delta: float) -> void:
 	options_changed.emit()
 
 
-func adjust_lives(delta: int) -> void:
-	starting_lives = clampi(starting_lives + delta, 1, 10)
+func adjust_health(delta: int) -> void:
+	starting_health = clampi(starting_health + delta, 1, 50)
 	options_changed.emit()
 
 

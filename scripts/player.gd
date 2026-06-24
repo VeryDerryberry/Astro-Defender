@@ -83,10 +83,10 @@ func take_hit() -> void:
 
 	invincible = true
 	invincibility_timer.start()
-	GameManager.lose_life()
+	GameManager.lose_health()
 	AudioManager.play_hit()
 
-	if GameManager.lives > 0:
+	if GameManager.health > 0:
 		velocity = Vector2.ZERO
 		global_position = GameLogic.playable_rect(get_viewport_rect().size).get_center()
 
@@ -98,6 +98,12 @@ func _on_hit_area_entered(area: Area2D) -> void:
 		else:
 			area.queue_free()
 		take_hit()
+	elif area.is_in_group("health_items"):
+		if area.has_method("collect"):
+			area.collect()
+	elif area.is_in_group("asteroids"):
+		if area.has_method("destroy"):
+			area.destroy()
 
 
 func _on_shoot_timer_timeout() -> void:

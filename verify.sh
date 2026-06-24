@@ -3,7 +3,7 @@ set -euo pipefail
 
 PROJECT="$(cd "$(dirname "$0")" && pwd)"
 GODOT="/home/derc/bin/godot"
-SCRATCH="${SCRATCH:-/tmp/grok-goal-220491e2a408/implementer}"
+SCRATCH="${SCRATCH:-/tmp/grok-goal-863521b54d0e/implementer}"
 ANDROID_HOME="${ANDROID_HOME:-/home/derc/Android/Sdk}"
 JAVA_HOME="${JAVA_HOME:-/home/derc/.local/jdk-17.0.14+7}"
 export ANDROID_HOME JAVA_HOME
@@ -77,7 +77,10 @@ grep -q 'RUNTIME music_looping=true' "$SCRATCH/godot_launch_1.log" || { echo "FA
 grep -q 'RUNTIME spawner_enemy_count=6' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: spawner enemy count mismatch"; exit 1; }
 grep -q 'RUNTIME wall_right_inside=true' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: right wall confinement"; exit 1; }
 grep -q 'RUNTIME wall_left_inside=true' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: left wall confinement"; exit 1; }
-grep -q 'RUNTIME lives_after_hit=4' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: collision lives"; exit 1; }
+grep -q 'RUNTIME health_after_hit=24' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: collision health"; exit 1; }
+grep -q 'RUNTIME menu_after_death=true' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: death menu return"; exit 1; }
+grep -q 'RUNTIME asteroid_count=' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: asteroids missing"; exit 1; }
+grep -q 'RUNTIME game_start_from_menu=true' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: menu start"; exit 1; }
 grep -q 'RUNTIME score_after_shot=100' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: projectile score"; exit 1; }
 grep -q 'RUNTIME camera_zoom_init=' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: camera zoom init missing"; exit 1; }
 grep -q 'RUNTIME camera_zoom_moving=' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: camera zoom moving missing"; exit 1; }
@@ -114,7 +117,7 @@ grep -q 'TouchInput=' "$PROJECT/project.godot"
 grep -q 'AudioManager=' "$PROJECT/project.godot"
 
 echo "[VP-3] Source inspection"
-for term in Line2D Polygon2D rotate thrust spawn wave lives score game_over start; do
+for term in Line2D Polygon2D rotate thrust spawn wave health score game_over start; do
   grep -rq "$term" "$PROJECT/scenes" "$PROJECT/scripts" "$PROJECT/main.tscn" || {
     echo "FAIL: missing term $term"
     exit 1
@@ -130,6 +133,10 @@ grep -q 'thrust_dir = Vector2.ZERO' "$PROJECT/scripts/touch_input.gd"
 grep -q 'LEFT_ZONE_FRACTION' "$PROJECT/scripts/touch_input.gd"
 grep -q '_finger_zones.erase' "$PROJECT/scripts/touch_input.gd"
 grep -q 'func _recompute_state' "$PROJECT/scripts/touch_input.gd"
+grep -q 'TouchToStartButton' "$PROJECT/main.tscn"
+grep -q 'asteroids' "$PROJECT/scripts/asteroid.gd"
+grep -q 'health_items' "$PROJECT/scripts/health_item.gd"
+grep -q 'return_to_menu' "$PROJECT/scripts/game_manager.gd"
 test -f "$PROJECT/export_presets.cfg"
 grep -q 'platform="Android"' "$PROJECT/export_presets.cfg"
 ! grep -rE 'Sprite2D|TextureRect|AnimatedSprite' "$PROJECT/scenes" "$PROJECT/scripts" 2>/dev/null

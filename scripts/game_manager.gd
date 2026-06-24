@@ -4,15 +4,16 @@ enum State { MENU, PLAYING, GAME_OVER }
 
 var state: State = State.MENU
 var score: int = 0
-var lives: int = 3
+var health: int = 20
 var wave: int = 1
 var high_score: int = 0
 
 const HIGH_SCORE_PATH := "user://highscore.save"
+const HEALTH_RESTORE_AMOUNT := 5
 
 signal state_changed(new_state: State)
 signal score_changed(new_score: int)
-signal lives_changed(new_lives: int)
+signal health_changed(new_health: int)
 signal wave_changed(new_wave: int)
 
 
@@ -22,11 +23,11 @@ func _ready() -> void:
 
 func start_game() -> void:
 	score = 0
-	lives = GameOptions.starting_lives
+	health = GameOptions.starting_health
 	wave = 1
 	_set_state(State.PLAYING)
 	score_changed.emit(score)
-	lives_changed.emit(lives)
+	health_changed.emit(health)
 	wave_changed.emit(wave)
 
 
@@ -35,16 +36,28 @@ func add_score(points: int) -> void:
 	score_changed.emit(score)
 
 
-func lose_life() -> void:
-	lives -= 1
-	lives_changed.emit(lives)
-	if lives <= 0:
-		end_game()
+func lose_health(amount: int = 1) -> void:
+	health -= amount
+	health_changed.emit(health)
+	if health <= 0:
+		_on_player_death()
+
+
+func restore_health(amount: int = HEALTH_RESTORE_AMOUNT) -> void:
+	health = mini(health + amount, GameOptions.starting_health)
+	health_changed.emit(health)
 
 
 func advance_wave() -> void:
 	wave += 1
 	wave_changed.emit(wave)
+
+
+func _on_player_death() -> void:
+	if score > high_score:
+		high_score = score
+		_save_high_score()
+	return_to_menu()
 
 
 func end_game() -> void:

@@ -27,6 +27,10 @@ func _on_area_entered(area: Area2D) -> void:
 		if area.has_method("destroy"):
 			area.destroy()
 		queue_free()
+	elif area.is_in_group("asteroids"):
+		if area.has_method("destroy"):
+			area.destroy()
+		queue_free()
 
 
 func _on_lifetime_expired() -> void:

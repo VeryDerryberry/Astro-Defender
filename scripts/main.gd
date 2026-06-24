@@ -19,8 +19,10 @@ const CAMERA_MOVE_SPEED_THRESHOLD := 15.0
 @onready var game_over_panel: Control = $UI/GameOverPanel
 
 @onready var score_label: Label = $UI/HUD/ScoreLabel
-@onready var lives_label: Label = $UI/HUD/LivesLabel
+@onready var health_label: Label = $UI/HUD/HealthLabel
 @onready var wave_label: Label = $UI/HUD/WaveLabel
+@onready var touch_to_start_button: Button = $UI/StartMenu/VBox/TouchToStartButton
+@onready var menu_high_score_label: Label = $UI/StartMenu/VBox/MenuHighScoreLabel
 @onready var final_score_label: Label = $UI/GameOverPanel/VBox/FinalScoreLabel
 @onready var high_score_label: Label = $UI/GameOverPanel/VBox/HighScoreLabel
 
@@ -35,12 +37,14 @@ func _ready() -> void:
 	ArenaContext.register(player, entities)
 	GameManager.state_changed.connect(_on_state_changed)
 	GameManager.score_changed.connect(_on_score_changed)
-	GameManager.lives_changed.connect(_on_lives_changed)
+	GameManager.health_changed.connect(_on_health_changed)
 	GameManager.wave_changed.connect(_on_wave_changed)
 	GameOptions.options_changed.connect(_refresh_options_labels)
+	touch_to_start_button.pressed.connect(_start_play)
 	_setup_options_ui()
 	_on_state_changed(GameManager.state)
 	_update_hud()
+	_refresh_menu_high_score()
 
 	if _verify_mode_enabled():
 		var verifier := preload("res://scripts/headless_verify.gd").new()
@@ -140,6 +144,7 @@ func _start_play() -> void:
 	player.velocity = Vector2.ZERO
 	_snap_camera_to_player()
 	print("RUNTIME options_applied=%s" % GameOptions.summary())
+	print("RUNTIME game_start_from_menu=true")
 
 
 func _restart() -> void:
@@ -169,6 +174,11 @@ func _on_state_changed(new_state: GameManager.State) -> void:
 	player.visible = new_state != GameManager.State.MENU
 	spawner.process_mode = Node.PROCESS_MODE_INHERIT if new_state == GameManager.State.PLAYING else Node.PROCESS_MODE_DISABLED
 
+	if new_state == GameManager.State.MENU:
+		_clear_entities()
+		_refresh_menu_high_score()
+		print("RUNTIME returned_to_menu=true")
+
 	if new_state == GameManager.State.GAME_OVER:
 		final_score_label.text = "Score: %d" % GameManager.score
 		high_score_label.text = "High Score: %d" % GameManager.high_score
@@ -178,8 +188,8 @@ func _on_score_changed(new_score: int) -> void:
 	score_label.text = "Score: %d" % new_score
 
 
-func _on_lives_changed(new_lives: int) -> void:
-	lives_label.text = "Lives: %d" % new_lives
+func _on_health_changed(new_health: int) -> void:
+	health_label.text = "Health: %d" % new_health
 
 
 func _on_wave_changed(new_wave: int) -> void:
@@ -188,14 +198,18 @@ func _on_wave_changed(new_wave: int) -> void:
 
 func _update_hud() -> void:
 	_on_score_changed(GameManager.score)
-	_on_lives_changed(GameManager.lives)
+	_on_health_changed(GameManager.health)
 	_on_wave_changed(GameManager.wave)
+
+
+func _refresh_menu_high_score() -> void:
+	menu_high_score_label.text = "High Score: %d" % GameManager.high_score
 
 
 func _setup_options_ui() -> void:
 	var options_box: VBoxContainer = start_menu.get_node("OptionsBox")
 	_add_option_row(options_box, "Fire Rate", "fire_rate", -0.02, 0.02)
-	_add_option_row(options_box, "Lives", "lives", -1, 1)
+	_add_option_row(options_box, "Health", "health", -1, 1)
 	_add_option_row(options_box, "Enemies / Wave", "enemies", -1, 1)
 	_add_option_row(options_box, "Enemy Speed", "enemy_speed", -0.1, 0.1)
 	_add_option_row(options_box, "Player Speed", "player_speed", -0.1, 0.1)
@@ -234,8 +248,8 @@ func _adjust_option(key: String, delta: float) -> void:
 	match key:
 		"fire_rate":
 			GameOptions.adjust_fire_rate(delta)
-		"lives":
-			GameOptions.adjust_lives(int(delta))
+		"health":
+			GameOptions.adjust_health(int(delta))
 		"enemies":
 			GameOptions.adjust_enemies(int(delta))
 		"enemy_speed":
@@ -248,7 +262,7 @@ func _adjust_option(key: String, delta: float) -> void:
 
 func _refresh_options_labels() -> void:
 	_option_labels["fire_rate"].text = "Fire Rate: %.2fs" % GameOptions.fire_rate
-	_option_labels["lives"].text = "Lives: %d" % GameOptions.starting_lives
+	_option_labels["health"].text = "Health: %d" % GameOptions.starting_health
 	_option_labels["enemies"].text = "Enemies / Wave: %d" % GameOptions.enemies_per_wave
 	_option_labels["enemy_speed"].text = "Enemy Speed: x%.1f" % GameOptions.enemy_speed_multiplier
 	_option_labels["player_speed"].text = "Player Speed: x%.1f" % GameOptions.player_speed_multiplier

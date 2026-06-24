@@ -103,11 +103,27 @@ theme_override_font_sizes/font_size = 48
 text = "ASTRO DEFENDER"
 horizontal_alignment = 1
 
+[node name="TouchToStartButton" type="Button" parent="UI/StartMenu/VBox" unique_id=2845014208]
+custom_minimum_size = Vector2(240, 48)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.05, 0.12, 0.1, 1)
+theme_override_colors/font_hover_color = Color(0.05, 0.12, 0.1, 1)
+theme_override_colors/font_pressed_color = Color(0.05, 0.12, 0.1, 1)
+theme_override_font_sizes/font_size = 22
+text = "Touch to Start"
+
 [node name="Prompt" type="Label" parent="UI/StartMenu/VBox" unique_id=1845014207]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.8, 1, 0.9, 1)
-theme_override_font_sizes/font_size = 22
-text = "Press Any Key to Start"
+theme_override_colors/font_color = Color(0.55, 0.75, 0.65, 1)
+theme_override_font_sizes/font_size = 14
+text = "or press any key"
+horizontal_alignment = 1
+
+[node name="MenuHighScoreLabel" type="Label" parent="UI/StartMenu/VBox" unique_id=3845014209]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.85, 0.65, 1)
+theme_override_font_sizes/font_size = 16
+text = "High Score: 0"
 horizontal_alignment = 1
 
 [node name="OptionsTitle" type="Label" parent="UI/StartMenu/VBox" unique_id=1150878348]
@@ -161,15 +177,15 @@ theme_override_colors/font_color = Color(0.3, 1, 0.7, 1)
 theme_override_font_sizes/font_size = 20
 text = "Score: 0"
 
-[node name="LivesLabel" type="Label" parent="UI/HUD" unique_id=2120644753]
+[node name="HealthLabel" type="Label" parent="UI/HUD" unique_id=2120644753]
 layout_mode = 0
 offset_left = 16.0
 offset_top = 42.0
 offset_right = 200.0
 offset_bottom = 70.0
-theme_override_colors/font_color = Color(1, 0.6, 0.5, 1)
+theme_override_colors/font_color = Color(0.4, 1, 0.6, 1)
 theme_override_font_sizes/font_size = 20
-text = "Lives: 3"
+text = "Health: 20"
 
 [node name="WaveLabel" type="Label" parent="UI/HUD" unique_id=762316114]
 layout_mode = 0

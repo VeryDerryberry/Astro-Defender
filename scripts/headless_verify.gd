@@ -3,7 +3,7 @@ extends Node
 const GameLogic := preload("res://scripts/game_logic.gd")
 
 const CUSTOM_ENEMIES := 6
-const CUSTOM_LIVES := 5
+const CUSTOM_HEALTH := 25
 const CUSTOM_FIRE_RATE := 0.10
 
 var _main: Node2D
@@ -49,14 +49,15 @@ func run() -> void:
 
 	if GameOptions.enemies_per_wave != CUSTOM_ENEMIES:
 		_fail("options enemies not applied")
-	if GameOptions.starting_lives != CUSTOM_LIVES:
-		_fail("options lives not applied")
+	if GameOptions.starting_health != CUSTOM_HEALTH:
+		_fail("options health not applied")
 	if not is_equal_approx(GameOptions.fire_rate, CUSTOM_FIRE_RATE):
 		_fail("options fire_rate not applied")
 
 	_halt_spawner()
 	await _wait_physics(2)
 	await _probe_spawner_wave(viewport_size, CUSTOM_ENEMIES)
+	await _probe_asteroids_present()
 	await _probe_camera_init(viewport_size)
 	await _probe_camera_zoom_transition(viewport_size)
 	_clear_enemies()
@@ -66,8 +67,9 @@ func run() -> void:
 	await _probe_wall_thrust(viewport_size, playable, "right", "move_right")
 	await _probe_wall_thrust(viewport_size, playable, "left", "move_left")
 
-	await _probe_player_collision(CUSTOM_LIVES)
+	await _probe_player_collision(CUSTOM_HEALTH)
 	await _probe_touch_shoot()
+	await _probe_death_returns_to_menu()
 
 	if failures > 0:
 		print("RUNTIME verify_exit=1 failures=%d" % failures)
@@ -85,7 +87,7 @@ func _fail(msg: String) -> void:
 func _apply_custom_options() -> void:
 	GameOptions.reset_defaults()
 	GameOptions.adjust_enemies(CUSTOM_ENEMIES - GameOptions.DEFAULT_ENEMIES)
-	GameOptions.adjust_lives(CUSTOM_LIVES - GameOptions.DEFAULT_LIVES)
+	GameOptions.adjust_health(CUSTOM_HEALTH - GameOptions.DEFAULT_HEALTH)
 	GameOptions.adjust_fire_rate(CUSTOM_FIRE_RATE - GameOptions.DEFAULT_FIRE_RATE)
 	print("RUNTIME options_preset=%s" % GameOptions.summary())
 
@@ -118,6 +120,14 @@ func _clear_enemies() -> void:
 	for child in _entities.get_children():
 		child.queue_free()
 	await get_tree().physics_frame
+
+
+func _count_group(group_name: String) -> int:
+	var count := 0
+	for child in _entities.get_children():
+		if child.is_in_group(group_name):
+			count += 1
+	return count
 
 
 func _probe_touch_thrust(playable: Rect2) -> void:
@@ -281,7 +291,7 @@ func _probe_wall_thrust(
 
 
 func _probe_spawner_wave(viewport_size: Vector2, expected_count: int) -> void:
-	var count := _entities.get_child_count()
+	var count := _count_group("enemies")
 	print("RUNTIME spawner_enemy_count=%d" % count)
 
 	if count != expected_count:
@@ -296,13 +306,20 @@ func _probe_spawner_wave(viewport_size: Vector2, expected_count: int) -> void:
 		_fail("spawner enemies not distributed across edges")
 
 
-func _probe_player_collision(expected_start_lives: int) -> void:
-	if GameManager.lives != expected_start_lives:
-		_fail("lives not at expected %d before collision (got %d)" % [expected_start_lives, GameManager.lives])
+func _probe_asteroids_present() -> void:
+	var asteroid_count := _count_group("asteroids")
+	print("RUNTIME asteroid_count=%d" % asteroid_count)
+	if asteroid_count < 1:
+		_fail("no asteroids spawned in wave")
+
+
+func _probe_player_collision(expected_start_health: int) -> void:
+	if GameManager.health != expected_start_health:
+		_fail("health not at expected %d before collision (got %d)" % [expected_start_health, GameManager.health])
 	if GameManager.score != 0:
 		_fail("score not zero before collision test")
 
-	var lives_before := GameManager.lives
+	var health_before := GameManager.health
 	_player.invincible = false
 	_player.velocity = Vector2.ZERO
 	_player.global_position = GameLogic.playable_rect(_main.get_viewport_rect().size).get_center()
@@ -315,12 +332,12 @@ func _probe_player_collision(expected_start_lives: int) -> void:
 	enemy.setup(enemy.global_position, _player, 1.0)
 	await _wait_physics(30)
 
-	print("RUNTIME lives_after_hit=%d" % GameManager.lives)
+	print("RUNTIME health_after_hit=%d" % GameManager.health)
 	print("RUNTIME score_after_hit=%d" % GameManager.score)
-	if lives_before != expected_start_lives:
-		_fail("unexpected starting lives %d" % lives_before)
-	if GameManager.lives != lives_before - 1:
-		_fail("player collision did not decrement lives")
+	if health_before != expected_start_health:
+		_fail("unexpected starting health %d" % health_before)
+	if GameManager.health != health_before - 1:
+		_fail("player collision did not decrement health")
 	if GameManager.score != 0:
 		_fail("player collision awarded score")
 
@@ -385,3 +402,28 @@ func _probe_touch_shoot() -> void:
 		_fail("touch shoot did not play sfx")
 	if GameManager.score - score_before != 100:
 		_fail("touch shoot score mismatch")
+
+
+func _probe_death_returns_to_menu() -> void:
+	GameManager.health = 1
+	GameManager.health_changed.emit(GameManager.health)
+	_player.invincible = false
+
+	for child in _entities.get_children():
+		child.queue_free()
+	await get_tree().physics_frame
+
+	var enemy_scene: PackedScene = preload("res://scenes/enemy.tscn")
+	var enemy: Area2D = enemy_scene.instantiate()
+	_entities.add_child(enemy)
+	enemy.global_position = _player.global_position
+	enemy.setup(enemy.global_position, _player, 1.0)
+	await _wait_physics(30)
+
+	print("RUNTIME death_health=%d" % GameManager.health)
+	print("RUNTIME death_state=%d" % GameManager.state)
+	if GameManager.health > 0:
+		_fail("death probe did not reduce health to zero")
+	if GameManager.state != GameManager.State.MENU:
+		_fail("death did not return to MENU state")
+	print("RUNTIME menu_after_death=true")

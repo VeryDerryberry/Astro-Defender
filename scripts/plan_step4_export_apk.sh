@@ -4,7 +4,7 @@ set -euo pipefail
 
 PROJECT="$(cd "$(dirname "$0")/.." && pwd)"
 GODOT="/home/derc/bin/godot"
-SCRATCH="${SCRATCH:-/tmp/grok-goal-220491e2a408/implementer}"
+SCRATCH="${SCRATCH:-/tmp/grok-goal-863521b54d0e/implementer}"
 ANDROID_HOME="${ANDROID_HOME:-/home/derc/Android/Sdk}"
 JAVA_HOME="${JAVA_HOME:-/home/derc/.local/jdk-17.0.14+7}"
 KEYSTORE="${KEYSTORE:-/home/derc/.local/share/godot/keystores/debug.keystore}"
