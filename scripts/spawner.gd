@@ -18,13 +18,13 @@ var speed_multiplier := 1.0
 func _ready() -> void:
 	spawn_timer = Timer.new()
 	spawn_timer.one_shot = false
-	spawn_timer.timeout.connect(_spawn_wave)
+	spawn_timer.timeout.connect(_spawn_enemy_batch)
 	add_child(spawn_timer)
 
 	wave_timer = Timer.new()
 	wave_timer.one_shot = false
 	wave_timer.wait_time = WAVE_WAIT_TIME
-	wave_timer.timeout.connect(_advance_wave)
+	wave_timer.timeout.connect(_on_wave_timer)
 	add_child(wave_timer)
 
 	GameManager.state_changed.connect(_on_state_changed)
@@ -33,9 +33,9 @@ func _ready() -> void:
 func _on_state_changed(new_state: GameManager.State) -> void:
 	if new_state == GameManager.State.PLAYING:
 		_reset_difficulty()
-		_spawn_wave()
+		_begin_wave()
 		wave_timer.start()
-	elif new_state == GameManager.State.MENU or new_state == GameManager.State.GAME_OVER:
+	elif new_state == GameManager.State.MENU:
 		spawn_timer.stop()
 		wave_timer.stop()
 
@@ -46,6 +46,11 @@ func _reset_difficulty() -> void:
 	speed_multiplier = GameOptions.enemy_speed_multiplier
 
 
+func _on_wave_timer() -> void:
+	_advance_wave()
+	_begin_wave()
+
+
 func _advance_wave() -> void:
 	GameManager.advance_wave()
 	enemies_per_wave = mini(enemies_per_wave + 1, 16)
@@ -53,7 +58,13 @@ func _advance_wave() -> void:
 	speed_multiplier += 0.06
 
 
-func _spawn_wave() -> void:
+func _begin_wave() -> void:
+	_spawn_enemy_batch()
+	_spawn_wave_obstacles()
+	spawn_timer.start(spawn_interval)
+
+
+func _spawn_enemy_batch() -> void:
 	if GameManager.state != GameManager.State.PLAYING:
 		return
 
@@ -72,24 +83,36 @@ func _spawn_wave() -> void:
 		enemy.setup(spawn_pos, target, speed_multiplier)
 		entities.add_child(enemy)
 
-	_spawn_asteroids(entities, viewport.size)
+
+func _spawn_wave_obstacles() -> void:
+	if GameManager.state != GameManager.State.PLAYING:
+		return
+
+	var entities := ArenaContext.get_entities()
+	if entities == null:
+		return
+
+	var viewport_size := get_viewport_rect().size
+	_spawn_asteroids(entities, viewport_size)
 
 	if GameManager.wave % 2 == 0:
-		_spawn_health_item(entities, viewport.size)
+		_spawn_health_item(entities, viewport_size)
 
-	print("RUNTIME wave_spawn enemies=%d asteroids=%d" % [enemies_per_wave, ASTEROIDS_PER_WAVE])
-	spawn_timer.start(spawn_interval)
+	print(
+		"RUNTIME wave_obstacles wave=%d asteroids=%d"
+		% [GameManager.wave, ASTEROIDS_PER_WAVE]
+	)
 
 
 func _spawn_asteroids(entities: Node2D, viewport_size: Vector2) -> void:
 	var playable := GameLogic.playable_rect(viewport_size)
-	for _i in ASTEROIDS_PER_WAVE:
+	for i in ASTEROIDS_PER_WAVE:
 		var asteroid: Area2D = ASTEROID_SCENE.instantiate()
 		var pos := Vector2(
-			randf_range(playable.position.x + 40, playable.end.x - 40),
-			randf_range(playable.position.y + 40, playable.end.y - 40)
+			playable.position.x + 80 + (i * 90),
+			playable.position.y + 120 + (i * 70)
 		)
-		var drift := Vector2(randf_range(-1, 1), randf_range(-1, 1))
+		var drift := Vector2(cos(i * 1.2), sin(i * 0.9))
 		asteroid.setup(pos, drift)
 		entities.add_child(asteroid)
 
@@ -97,11 +120,8 @@ func _spawn_asteroids(entities: Node2D, viewport_size: Vector2) -> void:
 func _spawn_health_item(entities: Node2D, viewport_size: Vector2) -> void:
 	var playable := GameLogic.playable_rect(viewport_size)
 	var item: Area2D = HEALTH_ITEM_SCENE.instantiate()
-	var pos := Vector2(
-		randf_range(playable.position.x + 60, playable.end.x - 60),
-		randf_range(playable.position.y + 60, playable.end.y - 60)
-	)
-	var drift := Vector2(randf_range(-1, 1), randf_range(-1, 1))
+	var pos := playable.get_center() + Vector2(0, -80)
+	var drift := Vector2(0.3, -0.7)
 	item.setup(pos, drift)
 	entities.add_child(item)
 	print("RUNTIME health_item_spawned=true")

@@ -35,6 +35,7 @@ func run() -> void:
 		ArenaContext.get_player() == _player and ArenaContext.get_entities() == _entities
 	).to_lower())
 
+	await _probe_default_health_before_custom()
 	await _apply_custom_options()
 	await _start_via_input()
 	if GameManager.state != GameManager.State.PLAYING:
@@ -82,6 +83,16 @@ func run() -> void:
 func _fail(msg: String) -> void:
 	failures += 1
 	push_error("VERIFY_FAIL: %s" % msg)
+
+
+func _probe_default_health_before_custom() -> void:
+	GameOptions.reset_defaults()
+	print("RUNTIME default_health=%d" % GameOptions.DEFAULT_HEALTH)
+	print("RUNTIME default_starting_health=%d" % GameOptions.starting_health)
+	if GameOptions.DEFAULT_HEALTH != 20:
+		_fail("DEFAULT_HEALTH is not 20")
+	if GameOptions.starting_health != GameOptions.DEFAULT_HEALTH:
+		_fail("starting_health does not match DEFAULT_HEALTH after reset")
 
 
 func _apply_custom_options() -> void:
@@ -309,8 +320,8 @@ func _probe_spawner_wave(viewport_size: Vector2, expected_count: int) -> void:
 func _probe_asteroids_present() -> void:
 	var asteroid_count := _count_group("asteroids")
 	print("RUNTIME asteroid_count=%d" % asteroid_count)
-	if asteroid_count < 1:
-		_fail("no asteroids spawned in wave")
+	if asteroid_count != 3:
+		_fail("expected exactly 3 asteroids at wave start (got %d)" % asteroid_count)
 
 
 func _probe_player_collision(expected_start_health: int) -> void:

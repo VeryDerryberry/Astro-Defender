@@ -1,10 +1,10 @@
 extends Node
 
-enum State { MENU, PLAYING, GAME_OVER }
+enum State { MENU, PLAYING }
 
 var state: State = State.MENU
 var score: int = 0
-var health: int = 20
+var health: int = 0
 var wave: int = 1
 var high_score: int = 0
 
@@ -18,6 +18,7 @@ signal wave_changed(new_wave: int)
 
 
 func _ready() -> void:
+	health = GameOptions.DEFAULT_HEALTH
 	_load_high_score()
 
 
@@ -29,6 +30,7 @@ func start_game() -> void:
 	score_changed.emit(score)
 	health_changed.emit(health)
 	wave_changed.emit(wave)
+	print("RUNTIME start_health=%d" % health)
 
 
 func add_score(points: int) -> void:
@@ -58,13 +60,6 @@ func _on_player_death() -> void:
 		high_score = score
 		_save_high_score()
 	return_to_menu()
-
-
-func end_game() -> void:
-	if score > high_score:
-		high_score = score
-		_save_high_score()
-	_set_state(State.GAME_OVER)
 
 
 func return_to_menu() -> void:

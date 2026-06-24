@@ -16,15 +16,12 @@ const CAMERA_MOVE_SPEED_THRESHOLD := 15.0
 
 @onready var start_menu: Control = $UI/StartMenu
 @onready var hud: Control = $UI/HUD
-@onready var game_over_panel: Control = $UI/GameOverPanel
 
 @onready var score_label: Label = $UI/HUD/ScoreLabel
 @onready var health_label: Label = $UI/HUD/HealthLabel
 @onready var wave_label: Label = $UI/HUD/WaveLabel
 @onready var touch_to_start_button: Button = $UI/StartMenu/VBox/TouchToStartButton
 @onready var menu_high_score_label: Label = $UI/StartMenu/VBox/MenuHighScoreLabel
-@onready var final_score_label: Label = $UI/GameOverPanel/VBox/FinalScoreLabel
-@onready var high_score_label: Label = $UI/GameOverPanel/VBox/HighScoreLabel
 
 var _option_labels: Dictionary = {}
 
@@ -121,18 +118,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch and event.is_pressed():
 		if GameManager.state == GameManager.State.MENU:
 			_start_play()
-		elif GameManager.state == GameManager.State.GAME_OVER:
-			_restart()
 		return
 
 	if GameManager.state == GameManager.State.MENU:
 		if event is InputEventKey or event is InputEventMouseButton:
 			if event.is_pressed():
 				_start_play()
-	elif GameManager.state == GameManager.State.GAME_OVER:
-		if event is InputEventKey or event is InputEventMouseButton:
-			if event.is_pressed():
-				_restart()
 
 
 func _start_play() -> void:
@@ -145,16 +136,6 @@ func _start_play() -> void:
 	_snap_camera_to_player()
 	print("RUNTIME options_applied=%s" % GameOptions.summary())
 	print("RUNTIME game_start_from_menu=true")
-
-
-func _restart() -> void:
-	_clear_entities()
-	TouchInput.reset_state()
-	player._apply_fire_rate()
-	GameManager.start_game()
-	player.global_position = _arena_center()
-	player.velocity = Vector2.ZERO
-	_snap_camera_to_player()
 
 
 func _arena_center() -> Vector2:
@@ -170,7 +151,6 @@ func _clear_entities() -> void:
 func _on_state_changed(new_state: GameManager.State) -> void:
 	start_menu.visible = new_state == GameManager.State.MENU
 	hud.visible = new_state == GameManager.State.PLAYING
-	game_over_panel.visible = new_state == GameManager.State.GAME_OVER
 	player.visible = new_state != GameManager.State.MENU
 	spawner.process_mode = Node.PROCESS_MODE_INHERIT if new_state == GameManager.State.PLAYING else Node.PROCESS_MODE_DISABLED
 
@@ -178,10 +158,6 @@ func _on_state_changed(new_state: GameManager.State) -> void:
 		_clear_entities()
 		_refresh_menu_high_score()
 		print("RUNTIME returned_to_menu=true")
-
-	if new_state == GameManager.State.GAME_OVER:
-		final_score_label.text = "Score: %d" % GameManager.score
-		high_score_label.text = "High Score: %d" % GameManager.high_score
 
 
 func _on_score_changed(new_score: int) -> void:
