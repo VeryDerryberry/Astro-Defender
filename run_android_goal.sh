@@ -2,7 +2,7 @@
 # Orchestrator matching plan.md verification steps 1, 3, 4, 5.
 set -euo pipefail
 
-SCRATCH="${SCRATCH:-/tmp/grok-goal-98594fc3f297/implementer}"
+SCRATCH="${SCRATCH:-/tmp/grok-goal-220491e2a408/implementer}"
 PROJECT="$(cd "$(dirname "$0")" && pwd)"
 export SCRATCH
 export ANDROID_GOAL_VERIFY=1

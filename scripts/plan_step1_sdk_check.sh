@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRATCH="${SCRATCH:-/tmp/grok-goal-98594fc3f297/implementer}"
+SCRATCH="${SCRATCH:-/tmp/grok-goal-220491e2a408/implementer}"
 ANDROID_HOME="${ANDROID_HOME:-/home/derc/Android/Sdk}"
 JAVA_HOME="${JAVA_HOME:-/home/derc/.local/jdk-17.0.14+7}"
 EDITOR_SETTINGS="/home/derc/.config/godot/editor_settings-4.6.tres"

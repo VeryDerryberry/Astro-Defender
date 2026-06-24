@@ -3,7 +3,7 @@ set -euo pipefail
 
 PROJECT="/home/derc/Godot/VectorGame"
 GODOT="/home/derc/bin/godot"
-SCRATCH="${SCRATCH:-/tmp/grok-goal-98594fc3f297/implementer}"
+SCRATCH="${SCRATCH:-/tmp/grok-goal-220491e2a408/implementer}"
 ANDROID_HOME="${ANDROID_HOME:-/home/derc/Android/Sdk}"
 JAVA_HOME="${JAVA_HOME:-/home/derc/.local/jdk-17.0.14+7}"
 export ANDROID_HOME JAVA_HOME

@@ -17,6 +17,11 @@ mkdir -p "$SCRATCH"
 
 rm -f "$SCRATCH"/godot_export_1.log "$SCRATCH"/godot_export_2.log
 
+_read_preset_prop() {
+  local key="$1"
+  grep "^${key}=" "$PROJECT/export_presets.cfg" | head -1 | sed 's/.*="\(.*\)"/\1/'
+}
+
 _append_apk_proof_to_log() {
   local log="$1"
   local apk="$2"
@@ -82,40 +87,56 @@ _reinstall_android_template() {
   echo "OK: android build template reinstalled"
 }
 
-_patch_launcher_manifest() {
-  local manifest="$PROJECT/android/build/src/release/AndroidManifest.xml"
-  test -f "$manifest" || { echo "FAIL: missing $manifest"; exit 1; }
-  cp "$manifest" "$SCRATCH/release_manifest_before_patch.xml"
-  if grep -q 'android.intent.category.LAUNCHER' "$manifest"; then
-    echo "OK: LAUNCHER already present in release manifest"
-  else
-    sed -i '/android.intent.category.DEFAULT/a\                <category android:name="android.intent.category.LAUNCHER" />' "$manifest"
-    echo "OK: patched LAUNCHER into release manifest"
-  fi
-  grep -A6 'GodotAppLauncher' "$manifest" | tee "$SCRATCH/release_manifest_patched_snippet.txt"
-}
-
 _reassemble_apk() {
   local label="$1"
   local gradle_apk="$PROJECT/android/build/build/outputs/apk/standard/release/android_release.apk"
+  local pkg ver_code ver_name min_sdk target_sdk abis
+  pkg=$(_read_preset_prop "package/unique_name")
+  ver_code=$(_read_preset_prop "version/code")
+  ver_name=$(_read_preset_prop "version/name")
+  min_sdk=$(_read_preset_prop "gradle_build/min_sdk")
+  target_sdk=$(_read_preset_prop "gradle_build/target_sdk")
+  abis="armeabi-v7a|arm64-v8a"
   (
     cd "$PROJECT/android/build"
     ./gradlew assembleStandardRelease \
-      -Pperform_signing=true \
-      -Prelease_keystore_file="$KEYSTORE" \
-      -Prelease_keystore_password="$KEYSTORE_PASS" \
-      -Prelease_keystore_alias="$KEYSTORE_USER"
+      "-Pexport_package_name=${pkg}" \
+      "-Pexport_version_code=${ver_code}" \
+      "-Pexport_version_name=${ver_name}" \
+      "-Pexport_version_min_sdk=${min_sdk}" \
+      "-Pexport_version_target_sdk=${target_sdk}" \
+      "-Pexport_enabled_abis=${abis}" \
+      "-Pperform_zipalign=true" \
+      "-Pperform_signing=true" \
+      "-Prelease_keystore_file=${KEYSTORE}" \
+      "-Prelease_keystore_password=${KEYSTORE_PASS}" \
+      "-Prelease_keystore_alias=${KEYSTORE_USER}" \
+      "-Pcompress_native_libraries=false"
   ) 2>&1 | tee "$SCRATCH/gradle_reassemble_${label}.log"
   test -f "$gradle_apk" || { echo "FAIL: gradle APK missing at $gradle_apk"; exit 1; }
   cp "$gradle_apk" "$PROJECT/build/AstroDefender.apk"
-  echo "OK: copied gradle APK to build/AstroDefender.apk"
+  echo "OK: copied gradle APK (package=${pkg}) to build/AstroDefender.apk"
+}
+
+_patch_launcher_manifest() {
+  local label="$1"
+  local manifest="$PROJECT/android/build/src/release/AndroidManifest.xml"
+  test -f "$manifest" || { echo "FAIL: missing $manifest"; exit 1; }
+  cp "$manifest" "$SCRATCH/release_manifest_before_patch_${label}.xml"
+  python3 "$PROJECT/scripts/patch_launcher_manifest.py" "$manifest"
+  grep -A10 'GodotApp' "$manifest" | tee "$SCRATCH/release_manifest_patched_snippet_${label}.txt"
 }
 
 _finalize_apk_with_launcher() {
   local label="$1"
-  echo "[manifest] patch LAUNCHER + reassemble ($label)"
-  _patch_launcher_manifest
+  local godot_apk="$PROJECT/build/AstroDefender.apk"
+  test -f "$godot_apk" || { echo "FAIL: Godot export did not produce APK"; exit 1; }
+  cp "$godot_apk" "$SCRATCH/godot_apk_before_patch_${label}.apk"
+
+  echo "[manifest] patch LAUNCHER on GodotApp + reassemble ($label)"
+  _patch_launcher_manifest "$label"
   _reassemble_apk "$label"
+  echo "REASSEMBLE_SKIPPED_${label}=no" | tee -a "$SCRATCH/apk_evidence.txt"
   "$PROJECT/scripts/verify_launcher_manifest.sh" "$PROJECT/build/AstroDefender.apk"
 }
 

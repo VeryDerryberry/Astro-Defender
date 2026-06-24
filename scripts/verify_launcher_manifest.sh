@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Verify APK has a launcher-visible activity alias (MAIN + LAUNCHER + exported).
+# Verify APK has launcher entry: correct package, badging launchable line, xmltree LAUNCHER.
 set -euo pipefail
 
 APK="${1:-/home/derc/Godot/VectorGame/build/AstroDefender.apk}"
+PROJECT="${PROJECT:-/home/derc/Godot/VectorGame}"
 SCRATCH="${SCRATCH:-/tmp/grok-goal-220491e2a408/implementer}"
 ANDROID_HOME="${ANDROID_HOME:-/home/derc/Android/Sdk}"
 
@@ -12,6 +13,9 @@ mkdir -p "$SCRATCH"
 AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt 2>/dev/null | sort -V | tail -1)
 test -n "$AAPT" || { echo "FAIL: aapt not found"; exit 1; }
 test -f "$APK" || { echo "FAIL: APK missing at $APK"; exit 1; }
+
+EXPECTED_PKG=$(grep '^package/unique_name=' "$PROJECT/export_presets.cfg" | head -1 | sed 's/.*="\(.*\)"/\1/')
+test -n "$EXPECTED_PKG" || { echo "FAIL: could not read expected package from export_presets.cfg"; exit 1; }
 
 OUT="$SCRATCH/aapt_launcher_check.txt"
 XMLTREE="$SCRATCH/aapt_xmltree_manifest.txt"
@@ -25,6 +29,25 @@ XMLTREE="$SCRATCH/aapt_xmltree_manifest.txt"
   echo "=== aapt xmltree (GodotAppLauncher block) ==="
   grep -A15 'GodotAppLauncher' "$XMLTREE" || true
 } > "$SCRATCH/aapt_launcher_combined.txt"
+
+ACTUAL_PKG=$(grep '^package: name=' "$OUT" | sed "s/package: name='\\([^']*\\)'.*/\\1/")
+if [ "$ACTUAL_PKG" != "$EXPECTED_PKG" ]; then
+  echo "FAIL: package mismatch expected=${EXPECTED_PKG} actual=${ACTUAL_PKG}"
+  exit 1
+fi
+
+if ! grep -qiE 'launchable-activity' "$OUT"; then
+  echo "FAIL: aapt badging missing launchable-activity line"
+  grep -iE 'launchable|launcher|other-activ' "$OUT" || true
+  exit 1
+fi
+
+if ! grep -qiE 'launchable-activity.*LAUNCHER|launchable-activity.*GodotAppLauncher' "$OUT"; then
+  if ! grep -qi 'launchable-activity' "$OUT"; then
+    echo "FAIL: launchable-activity line not found"
+    exit 1
+  fi
+fi
 
 if ! grep -q 'GodotAppLauncher' "$XMLTREE"; then
   echo "FAIL: GodotAppLauncher missing in manifest"
@@ -43,8 +66,10 @@ if ! grep -A15 'GodotAppLauncher' "$XMLTREE" | grep -q 'android:exported(0x01010
   exit 1
 fi
 
+LAUNCHABLE_LINE=$(grep -i 'launchable-activity' "$OUT" | head -1)
 echo "LAUNCHER_MANIFEST_CHECK=PASS" | tee "$SCRATCH/launcher_manifest_evidence.txt"
 echo "APK=$APK" | tee -a "$SCRATCH/launcher_manifest_evidence.txt"
-grep 'GodotAppLauncher' "$XMLTREE" | head -1 | tee -a "$SCRATCH/launcher_manifest_evidence.txt"
+echo "PACKAGE=$ACTUAL_PKG" | tee -a "$SCRATCH/launcher_manifest_evidence.txt"
+echo "$LAUNCHABLE_LINE" | tee -a "$SCRATCH/launcher_manifest_evidence.txt"
 grep 'android.intent.category.LAUNCHER' "$XMLTREE" | head -1 | tee -a "$SCRATCH/launcher_manifest_evidence.txt"
 echo "PASS: launcher manifest verified"

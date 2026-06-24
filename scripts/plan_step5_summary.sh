@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRATCH="${SCRATCH:-/tmp/grok-goal-98594fc3f297/implementer}"
+SCRATCH="${SCRATCH:-/tmp/grok-goal-220491e2a408/implementer}"
 PROJECT="/home/derc/Godot/VectorGame"
 OUT="$SCRATCH/goal_evidence.txt"
 
