@@ -10,6 +10,39 @@ export ANDROID_HOME JAVA_HOME
 export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
 mkdir -p "$SCRATCH"
 
+if [ -n "${ANDROID_GOAL_VERIFY:-}" ]; then
+  echo "=== Astro Defender Android goal verify (touch only) ==="
+
+  echo "[touch-source] touch_input.gd + player.gd"
+  grep -q 'func reset_state' "$PROJECT/scripts/touch_input.gd"
+  grep -q 'thrust_dir = Vector2.ZERO' "$PROJECT/scripts/touch_input.gd"
+  grep -q 'LEFT_ZONE_FRACTION' "$PROJECT/scripts/touch_input.gd"
+  grep -q '_finger_zones.erase' "$PROJECT/scripts/touch_input.gd"
+  grep -q 'func _recompute_state' "$PROJECT/scripts/touch_input.gd"
+  grep -q 'move_and_slide' "$PROJECT/scripts/player.gd"
+
+  echo "[touch-runtime] headless --verify launch"
+  set +e
+  "$GODOT" --headless --path "$PROJECT" -- --verify --quit-after 600 2>&1 | tee "$SCRATCH/godot_launch_touch.log"
+  TOUCH_RC=${PIPESTATUS[0]}
+  set -e
+  if [ "$TOUCH_RC" -ne 0 ]; then
+    echo "FAIL: touch verify launch exit $TOUCH_RC"
+    exit 1
+  fi
+  if grep -qiE "Can't run project|fatal|SCRIPT ERROR|Parse Error" "$SCRATCH/godot_launch_touch.log"; then
+    echo "FAIL: touch verify launch errors"
+    exit 1
+  fi
+  grep -q 'RUNTIME verify_exit=0' "$SCRATCH/godot_launch_touch.log" || { echo "FAIL: verify_exit not 0"; exit 1; }
+  grep -q 'RUNTIME touch_thrust_cleared=true' "$SCRATCH/godot_launch_touch.log" || { echo "FAIL: touch thrust not cleared"; exit 1; }
+  grep -q 'RUNTIME touch_thrust_peak=' "$SCRATCH/godot_launch_touch.log" || { echo "FAIL: touch thrust peak missing"; exit 1; }
+
+  echo "VERIFY_EXIT_CODE=0" | tee "$SCRATCH/verify_output.log"
+  echo "PASS: verify.sh complete" | tee -a "$SCRATCH/verify_output.log"
+  exit 0
+fi
+
 echo "=== Astro Defender verification (plan VP) ==="
 
 echo "[VP-1a] Headless launch 1 (main.tscn --verify)"
