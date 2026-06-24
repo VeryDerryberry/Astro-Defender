@@ -1,6 +1,14 @@
 # Godot 4+ specific ignores
 .godot/
-/android/
+
+# Android export template + custom build sources (gradle project, Java/Kotlin sources,
+# patched manifests for launcher, resource overrides). Committed for Android build reproducibility.
+# Exclude only the large generated outputs/caches (exceed GitHub 100MB limit) and prebuilts.
+android/build/build/
+android/build/.gradle/
+android/build/libs/
+
+# Exported APK and signatures (large binaries not suitable for git)
 /build/
 
 # Goal submission artifacts (local only)
