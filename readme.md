@@ -50,9 +50,10 @@ SCRATCH=/tmp/grok-goal-9bc1a73858f2/implementer ./run_android_goal.sh
 
 ## Git & APK
 
-The release APK at `build/AstroDefender.apk` is tracked in git (other `build/` artifacts are ignored). To push source and APK to GitHub:
+The release APK at `build/AstroDefender.apk` is tracked via **Git LFS** (~150 MB; other `build/` artifacts are ignored). To push source and APK to GitHub:
 
 ```bash
+git lfs install
 git add -f build/AstroDefender.apk
 git add project.godot main.tscn scripts/ .gitignore readme.md
 git commit -m "Portrait viewport, dynamic zoom, APK export"
