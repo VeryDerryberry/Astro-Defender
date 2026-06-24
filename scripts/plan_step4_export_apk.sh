@@ -118,22 +118,38 @@ _reassemble_apk() {
   echo "OK: copied gradle APK (package=${pkg}) to build/AstroDefender.apk"
 }
 
+_alias_has_launcher_in_filter() {
+  local manifest="$1"
+  grep -A12 'GodotAppLauncher' "$manifest" | grep -q 'android.intent.category.LAUNCHER'
+}
+
 _patch_launcher_manifest() {
   local label="$1"
   local manifest="$PROJECT/android/build/src/release/AndroidManifest.xml"
   test -f "$manifest" || { echo "FAIL: missing $manifest"; exit 1; }
   cp "$manifest" "$SCRATCH/release_manifest_before_patch_${label}.xml"
-  python3 "$PROJECT/scripts/patch_launcher_manifest.py" "$manifest"
-  grep -A10 'GodotApp' "$manifest" | tee "$SCRATCH/release_manifest_patched_snippet_${label}.txt"
+  python3 "$PROJECT/scripts/patch_launcher_manifest.py" "$manifest" | tee "$SCRATCH/patch_launcher_${label}.log"
+  grep -A12 'GodotAppLauncher' "$manifest" | tee "$SCRATCH/release_manifest_patched_snippet_${label}.txt"
 }
 
 _finalize_apk_with_launcher() {
   local label="$1"
+  local manifest="$PROJECT/android/build/src/release/AndroidManifest.xml"
   local godot_apk="$PROJECT/build/AstroDefender.apk"
   test -f "$godot_apk" || { echo "FAIL: Godot export did not produce APK"; exit 1; }
+  test -f "$manifest" || { echo "FAIL: missing $manifest"; exit 1; }
   cp "$godot_apk" "$SCRATCH/godot_apk_before_patch_${label}.apk"
 
-  echo "[manifest] patch LAUNCHER on GodotApp + reassemble ($label)"
+  if _alias_has_launcher_in_filter "$manifest"; then
+    echo "OK: GodotAppLauncher alias already has LAUNCHER in release manifest"
+    if "$PROJECT/scripts/verify_launcher_manifest.sh" "$godot_apk"; then
+      echo "REASSEMBLE_SKIPPED_${label}=yes" | tee -a "$SCRATCH/apk_evidence.txt"
+      return 0
+    fi
+    echo "WARN: Godot APK failed launcher verify; patching and reassembling"
+  fi
+
+  echo "[manifest] patch GodotAppLauncher alias LAUNCHER + reassemble ($label)"
   _patch_launcher_manifest "$label"
   _reassemble_apk "$label"
   echo "REASSEMBLE_SKIPPED_${label}=no" | tee -a "$SCRATCH/apk_evidence.txt"
