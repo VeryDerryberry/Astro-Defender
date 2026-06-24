@@ -52,7 +52,7 @@ func _process(delta: float) -> void:
 
 
 func play_shoot() -> void:
-	_play_sfx(880.0, 0.07)
+	_play_sfx(100.0, 0.07)
 
 
 func play_hit() -> void:

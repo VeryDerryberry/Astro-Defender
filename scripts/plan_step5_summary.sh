@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRATCH="${SCRATCH:-/tmp/grok-goal-220491e2a408/implementer}"
-PROJECT="/home/derc/Godot/VectorGame"
+PROJECT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$SCRATCH/goal_evidence.txt"
 
 mkdir -p "$SCRATCH"

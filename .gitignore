@@ -8,8 +8,9 @@ android/build/build/
 android/build/.gradle/
 android/build/libs/
 
-# Exported APK and signatures (large binaries not suitable for git)
-/build/
+# Exported APK and signatures — ignore build cache but allow the release APK
+/build/*
+!build/AstroDefender.apk
 
 # Goal submission artifacts (local only)
 /GOAL_COMPLETION.md

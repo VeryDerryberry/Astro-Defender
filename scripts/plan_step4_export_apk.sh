@@ -2,7 +2,7 @@
 # Plan verification step 4: literal Godot CLI export twice (forced clean build).
 set -euo pipefail
 
-PROJECT="/home/derc/Godot/VectorGame"
+PROJECT="$(cd "$(dirname "$0")/.." && pwd)"
 GODOT="/home/derc/bin/godot"
 SCRATCH="${SCRATCH:-/tmp/grok-goal-220491e2a408/implementer}"
 ANDROID_HOME="${ANDROID_HOME:-/home/derc/Android/Sdk}"

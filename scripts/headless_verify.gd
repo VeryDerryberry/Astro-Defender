@@ -27,6 +27,7 @@ func run() -> void:
 	var viewport_size := _main.get_viewport_rect().size
 	var playable := GameLogic.playable_rect(viewport_size)
 
+	print("RUNTIME viewport_size=%dx%d" % [int(viewport_size.x), int(viewport_size.y)])
 	print("RUNTIME arena_walls_present=%s" % str(_main.get_node_or_null("ArenaWalls") != null).to_lower())
 	print("RUNTIME arena_context_ok=%s" % str(
 		ArenaContext.get_player() == _player and ArenaContext.get_entities() == _entities

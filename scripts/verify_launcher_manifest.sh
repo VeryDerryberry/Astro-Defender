@@ -2,8 +2,9 @@
 # Verify APK: launchable-activity in badging + GodotAppLauncher alias LAUNCHER in xmltree.
 set -euo pipefail
 
-APK="${1:-/home/derc/Godot/VectorGame/build/AstroDefender.apk}"
-PROJECT="${PROJECT:-/home/derc/Godot/VectorGame}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT="${PROJECT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+APK="${1:-$PROJECT/build/AstroDefender.apk}"
 SCRATCH="${SCRATCH:-/tmp/grok-goal-220491e2a408/implementer}"
 ANDROID_HOME="${ANDROID_HOME:-/home/derc/Android/Sdk}"
 

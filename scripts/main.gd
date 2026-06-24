@@ -2,8 +2,14 @@ extends Node2D
 
 const GameLogic := preload("res://scripts/game_logic.gd")
 
+const CAMERA_ZOOM_IDLE := 2.2
+const CAMERA_ZOOM_MOVING := 1.5
+const CAMERA_ZOOM_LERP_SPEED := 4.0
+const CAMERA_MOVE_SPEED_THRESHOLD := 15.0
+
 @onready var arena_border: Line2D = $ArenaBorder
 @onready var arena_walls: StaticBody2D = $ArenaWalls
+@onready var camera: Camera2D = $Camera2D
 @onready var player: CharacterBody2D = $Player
 @onready var spawner: Node2D = $Spawner
 @onready var entities: Node2D = $Entities
@@ -25,6 +31,7 @@ func _ready() -> void:
 	var viewport_size := get_viewport_rect().size
 	arena_border.points = GameLogic.arena_border_points(viewport_size)
 	GameLogic.configure_wall_shapes(arena_walls, viewport_size)
+	_setup_camera(viewport_size)
 	ArenaContext.register(player, entities)
 	GameManager.state_changed.connect(_on_state_changed)
 	GameManager.score_changed.connect(_on_score_changed)
@@ -40,6 +47,25 @@ func _ready() -> void:
 		add_child(verifier)
 		verifier.setup(self)
 		verifier.run()
+
+
+func _process(delta: float) -> void:
+	_update_camera_zoom(delta)
+
+
+func _setup_camera(viewport_size: Vector2) -> void:
+	var center := GameLogic.playable_rect(viewport_size).get_center()
+	camera.position = center
+	camera.zoom = Vector2.ONE * CAMERA_ZOOM_IDLE
+
+
+func _update_camera_zoom(delta: float) -> void:
+	var target_zoom := CAMERA_ZOOM_IDLE
+	if GameManager.state == GameManager.State.PLAYING and player.velocity.length() > CAMERA_MOVE_SPEED_THRESHOLD:
+		target_zoom = CAMERA_ZOOM_MOVING
+	var current := camera.zoom.x
+	var new_zoom := lerpf(current, target_zoom, CAMERA_ZOOM_LERP_SPEED * delta)
+	camera.zoom = Vector2(new_zoom, new_zoom)
 
 
 func _verify_mode_enabled() -> bool:

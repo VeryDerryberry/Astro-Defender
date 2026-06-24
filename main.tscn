@@ -5,10 +5,10 @@
 [ext_resource type="Script" uid="uid://bb5h2npb411k7" path="res://scripts/spawner.gd" id="3_spawner"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_h"]
-size = Vector2(1264, 8)
+size = Vector2(704, 8)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wall_v"]
-size = Vector2(8, 704)
+size = Vector2(8, 1240)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
 bg_color = Color(0, 0, 0, 0.75)
@@ -34,26 +34,27 @@ collision_layer = 4
 collision_mask = 0
 
 [node name="TopWall" type="CollisionShape2D" parent="ArenaWalls" unique_id=341093618]
-position = Vector2(640, 8)
+position = Vector2(360, 20)
 shape = SubResource("RectangleShape2D_wall_h")
 
 [node name="BottomWall" type="CollisionShape2D" parent="ArenaWalls" unique_id=1904856199]
-position = Vector2(640, 712)
+position = Vector2(360, 1260)
 shape = SubResource("RectangleShape2D_wall_h")
 
 [node name="LeftWall" type="CollisionShape2D" parent="ArenaWalls" unique_id=1913513654]
-position = Vector2(8, 360)
+position = Vector2(20, 640)
 shape = SubResource("RectangleShape2D_wall_v")
 
 [node name="RightWall" type="CollisionShape2D" parent="ArenaWalls" unique_id=540538556]
-position = Vector2(1272, 360)
+position = Vector2(700, 640)
 shape = SubResource("RectangleShape2D_wall_v")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=524793090]
-position = Vector2(640, 360)
+position = Vector2(360, 640)
+zoom = Vector2(2.2, 2.2)
 
 [node name="Player" parent="." unique_id=1544488504 instance=ExtResource("2_player")]
-position = Vector2(640, 360)
+position = Vector2(360, 640)
 
 [node name="Entities" type="Node2D" parent="." unique_id=1318101680]
 
@@ -87,9 +88,9 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -212.0
-offset_top = -351.0
+offset_top = -280.0
 offset_right = 199.0
-offset_bottom = 89.0
+offset_bottom = 160.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 16
