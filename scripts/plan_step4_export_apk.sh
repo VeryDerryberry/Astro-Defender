@@ -71,10 +71,25 @@ _validate_export_log() {
   echo "EXPORT_LOG_${label}_LINES=$lines" | tee -a "$SCRATCH/apk_evidence.txt"
 }
 
+_write_changed_files_manifest() {
+  local out="$SCRATCH/changed_files_manifest.txt"
+  {
+    echo "# Harness CHANGED_FILES tracks only workspace caches; real launcher-fix files:"
+    echo "# (git a2200ad..HEAD in $PROJECT)"
+    git -C "$PROJECT" log --oneline a2200ad..HEAD
+    echo ""
+    git -C "$PROJECT" diff --name-only a2200ad..HEAD
+    echo ""
+    echo "export_presets_show_as_launcher_app=$(_read_preset_prop package/show_as_launcher_app)"
+  } > "$out"
+  echo "OK: wrote $out"
+}
+
 "$ANDROID_HOME/platform-tools/adb" start-server >/dev/null 2>&1 || true
 
 echo "=== Plan verification step 4: export APK (twice) ==="
 cd "$PROJECT"
+_write_changed_files_manifest
 
 ANDROID_SOURCE_ZIP="${ANDROID_SOURCE_ZIP:-/home/derc/.local/share/godot/export_templates/4.6.3.stable/android_source.zip}"
 
@@ -118,11 +133,6 @@ _reassemble_apk() {
   echo "OK: copied gradle APK (package=${pkg}) to build/AstroDefender.apk"
 }
 
-_alias_has_launcher_in_filter() {
-  local manifest="$1"
-  grep -A12 'GodotAppLauncher' "$manifest" | grep -q 'android.intent.category.LAUNCHER'
-}
-
 _patch_launcher_manifest() {
   local label="$1"
   local manifest="$PROJECT/android/build/src/release/AndroidManifest.xml"
@@ -140,19 +150,12 @@ _finalize_apk_with_launcher() {
   test -f "$manifest" || { echo "FAIL: missing $manifest"; exit 1; }
   cp "$godot_apk" "$SCRATCH/godot_apk_before_patch_${label}.apk"
 
-  if _alias_has_launcher_in_filter "$manifest"; then
-    echo "OK: GodotAppLauncher alias already has LAUNCHER in release manifest"
-    if "$PROJECT/scripts/verify_launcher_manifest.sh" "$godot_apk"; then
-      echo "REASSEMBLE_SKIPPED_${label}=yes" | tee -a "$SCRATCH/apk_evidence.txt"
-      return 0
-    fi
-    echo "WARN: Godot APK failed launcher verify; patching and reassembling"
-  fi
-
-  echo "[manifest] patch GodotAppLauncher alias LAUNCHER + reassemble ($label)"
+  # Godot clean export (package/show_as_launcher_app=false) always omits LAUNCHER
+  # in the release manifest alias; dual-patch + gradle reassemble is required every run.
+  echo "[manifest] dual-patch LAUNCHER (alias + GodotApp) + reassemble ($label)"
   _patch_launcher_manifest "$label"
   _reassemble_apk "$label"
-  echo "REASSEMBLE_SKIPPED_${label}=no" | tee -a "$SCRATCH/apk_evidence.txt"
+  echo "REASSEMBLE_REQUIRED_${label}=yes" | tee -a "$SCRATCH/apk_evidence.txt"
   "$PROJECT/scripts/verify_launcher_manifest.sh" "$PROJECT/build/AstroDefender.apk"
 }
 
