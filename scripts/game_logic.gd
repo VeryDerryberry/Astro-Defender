@@ -166,6 +166,71 @@ static func configure_wall_shapes(walls: StaticBody2D, viewport_size: Vector2) -
 	right.shape = v_shape.duplicate()
 
 
+static func camera_visible_half_size(viewport_size: Vector2, zoom: float) -> Vector2:
+	return viewport_size * 0.5 / zoom
+
+
+static func camera_visible_rect(camera_pos: Vector2, viewport_size: Vector2, zoom: float) -> Rect2:
+	var half := camera_visible_half_size(viewport_size, zoom)
+	return Rect2(camera_pos - half, half * 2.0)
+
+
+static func fit_zoom_for_playable(viewport_size: Vector2) -> float:
+	var playable := playable_rect(viewport_size)
+	var zoom_x := viewport_size.x / playable.size.x
+	var zoom_y := viewport_size.y / playable.size.y
+	return minf(zoom_x, zoom_y)
+
+
+static func clamp_camera_position(pos: Vector2, viewport_size: Vector2, zoom: float) -> Vector2:
+	var playable := playable_rect(viewport_size)
+	var half := camera_visible_half_size(viewport_size, zoom)
+	var min_pos := playable.position + half
+	var max_pos := playable.position + playable.size - half
+
+	if min_pos.x > max_pos.x:
+		pos.x = playable.position.x + playable.size.x * 0.5
+	else:
+		pos.x = clampf(pos.x, min_pos.x, max_pos.x)
+
+	if min_pos.y > max_pos.y:
+		pos.y = playable.position.y + playable.size.y * 0.5
+	else:
+		pos.y = clampf(pos.y, min_pos.y, max_pos.y)
+
+	return pos
+
+
+static func distance_to_playable_edge(pos: Vector2, viewport_size: Vector2) -> float:
+	var inner := playable_rect(viewport_size)
+	return minf(
+		minf(pos.x - inner.position.x, inner.position.x + inner.size.x - pos.x),
+		minf(pos.y - inner.position.y, inner.position.y + inner.size.y - pos.y)
+	)
+
+
+static func idle_zoom_for_position(
+	pos: Vector2,
+	viewport_size: Vector2,
+	max_zoom: float,
+	edge_blend_distance: float = 100.0
+) -> float:
+	var fit := fit_zoom_for_playable(viewport_size)
+	var edge_dist := distance_to_playable_edge(pos, viewport_size)
+	var center_factor := clampf(edge_dist / edge_blend_distance, 0.0, 1.0)
+	return lerpf(fit, max_zoom, center_factor)
+
+
+static func is_point_in_camera_view(
+	point: Vector2,
+	camera_pos: Vector2,
+	viewport_size: Vector2,
+	zoom: float,
+	margin: float = 8.0
+) -> bool:
+	return camera_visible_rect(camera_pos, viewport_size, zoom).grow(-margin).has_point(point)
+
+
 static func edge_index(pos: Vector2, viewport_size: Vector2, _margin: float = 30.0) -> int:
 	var arena := arena_rect(viewport_size)
 	if pos.y < arena.position.y:

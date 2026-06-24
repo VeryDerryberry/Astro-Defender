@@ -37,6 +37,10 @@ if [ -n "${ANDROID_GOAL_VERIFY:-}" ]; then
   grep -q 'RUNTIME verify_exit=0' "$SCRATCH/godot_launch_touch.log" || { echo "FAIL: verify_exit not 0"; exit 1; }
   grep -q 'RUNTIME touch_thrust_cleared=true' "$SCRATCH/godot_launch_touch.log" || { echo "FAIL: touch thrust not cleared"; exit 1; }
   grep -q 'RUNTIME touch_thrust_peak=' "$SCRATCH/godot_launch_touch.log" || { echo "FAIL: touch thrust peak missing"; exit 1; }
+  grep -q 'RUNTIME camera_zoom_init=' "$SCRATCH/godot_launch_touch.log" || { echo "FAIL: camera zoom init missing"; exit 1; }
+  grep -q 'RUNTIME camera_zoom_moving=' "$SCRATCH/godot_launch_touch.log" || { echo "FAIL: camera zoom moving missing"; exit 1; }
+  grep -q 'RUNTIME camera_player_on_screen=true' "$SCRATCH/godot_launch_touch.log" || { echo "FAIL: player not on screen during camera follow"; exit 1; }
+  grep -q 'RUNTIME wall_right_player_on_screen=true' "$SCRATCH/godot_launch_touch.log" || { echo "FAIL: player offscreen at right wall"; exit 1; }
 
   echo "VERIFY_EXIT_CODE=0" | tee "$SCRATCH/verify_output.log"
   echo "PASS: verify.sh complete" | tee -a "$SCRATCH/verify_output.log"
@@ -75,6 +79,12 @@ grep -q 'RUNTIME wall_right_inside=true' "$SCRATCH/godot_launch_1.log" || { echo
 grep -q 'RUNTIME wall_left_inside=true' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: left wall confinement"; exit 1; }
 grep -q 'RUNTIME lives_after_hit=4' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: collision lives"; exit 1; }
 grep -q 'RUNTIME score_after_shot=100' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: projectile score"; exit 1; }
+grep -q 'RUNTIME camera_zoom_init=' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: camera zoom init missing"; exit 1; }
+grep -q 'RUNTIME camera_zoom_moving=' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: camera zoom moving missing"; exit 1; }
+grep -q 'RUNTIME camera_player_on_screen=true' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: player not on screen during camera follow"; exit 1; }
+grep -q 'RUNTIME wall_right_player_on_screen=true' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: player offscreen at right wall"; exit 1; }
+grep -q 'RUNTIME wall_left_player_on_screen=true' "$SCRATCH/godot_launch_1.log" || { echo "FAIL: player offscreen at left wall"; exit 1; }
+grep -q 'zero_velocity_into_wall' "$PROJECT/scripts/player.gd" || { echo "FAIL: zero_velocity_into_wall not wired"; exit 1; }
 
 WALL_VEL=$(grep '^RUNTIME wall_right_velocity=' "$SCRATCH/godot_launch_1.log" | tail -1 | cut -d= -f2)
 awk -v v="$WALL_VEL" 'BEGIN { if (v > 5.0) exit 1 }'

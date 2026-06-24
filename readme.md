@@ -28,8 +28,8 @@ You control a fast, agile spaceship in a 2D arena. Enemies spawn from the edges 
 
 - Viewport: **720×1280** portrait (`project.godot`)
 - Arena border, walls, and spawn positions are computed from the live viewport size (no landscape hardcodes)
-- Camera centers on the playable arena
-- **Dynamic zoom**: starts at **2.2×** when idle, smoothly zooms out to **1.5×** while the ship is moving
+- Camera follows the player and clamps to the playable arena
+- **Dynamic zoom**: starts at **2.2×** when idle at center, zooms out to fit the full arena while moving, and eases out near walls so the ship stays on screen
 
 ## Style
 

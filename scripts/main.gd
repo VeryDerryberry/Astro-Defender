@@ -3,8 +3,8 @@ extends Node2D
 const GameLogic := preload("res://scripts/game_logic.gd")
 
 const CAMERA_ZOOM_IDLE := 2.2
-const CAMERA_ZOOM_MOVING := 1.5
 const CAMERA_ZOOM_LERP_SPEED := 4.0
+const CAMERA_POSITION_LERP_SPEED := 10.0
 const CAMERA_MOVE_SPEED_THRESHOLD := 15.0
 
 @onready var arena_border: Line2D = $ArenaBorder
@@ -50,22 +50,55 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	_update_camera_zoom(delta)
+	_update_camera(delta)
 
 
 func _setup_camera(viewport_size: Vector2) -> void:
 	var center := GameLogic.playable_rect(viewport_size).get_center()
+	var menu_zoom := GameLogic.fit_zoom_for_playable(viewport_size)
 	camera.position = center
+	camera.zoom = Vector2.ONE * menu_zoom
+
+
+func _snap_camera_to_player() -> void:
+	var viewport_size := get_viewport_rect().size
+	camera.position = GameLogic.clamp_camera_position(
+		player.global_position, viewport_size, CAMERA_ZOOM_IDLE
+	)
 	camera.zoom = Vector2.ONE * CAMERA_ZOOM_IDLE
 
 
-func _update_camera_zoom(delta: float) -> void:
-	var target_zoom := CAMERA_ZOOM_IDLE
-	if GameManager.state == GameManager.State.PLAYING and player.velocity.length() > CAMERA_MOVE_SPEED_THRESHOLD:
-		target_zoom = CAMERA_ZOOM_MOVING
-	var current := camera.zoom.x
-	var new_zoom := lerpf(current, target_zoom, CAMERA_ZOOM_LERP_SPEED * delta)
+func _update_camera(delta: float) -> void:
+	var viewport_size := get_viewport_rect().size
+	var target_zoom := GameLogic.fit_zoom_for_playable(viewport_size)
+	var follow_target := GameLogic.playable_rect(viewport_size).get_center()
+
+	if GameManager.state == GameManager.State.PLAYING:
+		follow_target = player.global_position
+		if player.velocity.length() > CAMERA_MOVE_SPEED_THRESHOLD:
+			target_zoom = GameLogic.fit_zoom_for_playable(viewport_size)
+		else:
+			target_zoom = GameLogic.idle_zoom_for_position(
+				player.global_position, viewport_size, CAMERA_ZOOM_IDLE
+			)
+
+	var zoom_lerp_speed := CAMERA_ZOOM_LERP_SPEED
+	var is_moving := (
+		GameManager.state == GameManager.State.PLAYING
+		and player.velocity.length() > CAMERA_MOVE_SPEED_THRESHOLD
+	)
+	if is_moving:
+		zoom_lerp_speed = 8.0
+
+	var current_zoom := camera.zoom.x
+	var new_zoom := lerpf(current_zoom, target_zoom, zoom_lerp_speed * delta)
 	camera.zoom = Vector2(new_zoom, new_zoom)
+
+	var clamped_pos := GameLogic.clamp_camera_position(follow_target, viewport_size, new_zoom)
+	if is_moving:
+		camera.position = clamped_pos
+	else:
+		camera.position = camera.position.lerp(clamped_pos, CAMERA_POSITION_LERP_SPEED * delta)
 
 
 func _verify_mode_enabled() -> bool:
@@ -105,6 +138,7 @@ func _start_play() -> void:
 	GameManager.start_game()
 	player.global_position = _arena_center()
 	player.velocity = Vector2.ZERO
+	_snap_camera_to_player()
 	print("RUNTIME options_applied=%s" % GameOptions.summary())
 
 
@@ -115,6 +149,7 @@ func _restart() -> void:
 	GameManager.start_game()
 	player.global_position = _arena_center()
 	player.velocity = Vector2.ZERO
+	_snap_camera_to_player()
 
 
 func _arena_center() -> Vector2:

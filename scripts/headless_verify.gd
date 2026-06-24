@@ -8,6 +8,7 @@ const CUSTOM_FIRE_RATE := 0.10
 
 var _main: Node2D
 var _player: CharacterBody2D
+var _camera: Camera2D
 var _entities: Node2D
 var _spawner: Node2D
 var failures := 0
@@ -16,6 +17,7 @@ var failures := 0
 func setup(main: Node2D) -> void:
 	_main = main
 	_player = main.get_node("Player")
+	_camera = main.get_node("Camera2D")
 	_entities = main.get_node("Entities")
 	_spawner = main.get_node("Spawner")
 
@@ -55,6 +57,8 @@ func run() -> void:
 	_halt_spawner()
 	await _wait_physics(2)
 	await _probe_spawner_wave(viewport_size, CUSTOM_ENEMIES)
+	await _probe_camera_init(viewport_size)
+	await _probe_camera_zoom_transition(viewport_size)
 	_clear_enemies()
 	TouchInput.reset_state()
 	await _probe_touch_thrust(playable)
@@ -185,6 +189,58 @@ func _probe_touch_thrust(playable: Rect2) -> void:
 		_fail("touch thrust did not accelerate player")
 
 
+func _probe_camera_init(viewport_size: Vector2) -> void:
+	await _wait_physics(8)
+	var zoom_init := _camera.zoom.x
+	var on_screen := GameLogic.is_point_in_camera_view(
+		_player.global_position, _camera.position, viewport_size, zoom_init
+	)
+	print("RUNTIME camera_zoom_init=%f" % zoom_init)
+	print("RUNTIME camera_player_on_screen_init=%s" % str(on_screen).to_lower())
+	print("RUNTIME camera_fit_zoom=%f" % GameLogic.fit_zoom_for_playable(viewport_size))
+
+	if absf(zoom_init - 2.2) > 0.2:
+		_fail("camera initial zoom not ~2.2 (got %f)" % zoom_init)
+	if not on_screen:
+		_fail("player offscreen at camera init")
+
+
+func _probe_camera_zoom_transition(viewport_size: Vector2) -> void:
+	_player.velocity = Vector2.ZERO
+	_player.global_position = GameLogic.playable_rect(viewport_size).get_center()
+	TouchInput.reset_state()
+	await _wait_physics(8)
+
+	var zoom_before := _camera.zoom.x
+	var fit_zoom := GameLogic.fit_zoom_for_playable(viewport_size)
+	Input.action_press("move_right")
+	var min_zoom := zoom_before
+	var on_screen_during := false
+	for _i in 90:
+		await get_tree().physics_frame
+		min_zoom = minf(min_zoom, _camera.zoom.x)
+		if GameLogic.is_point_in_camera_view(
+			_player.global_position, _camera.position, viewport_size, _camera.zoom.x
+		):
+			on_screen_during = true
+	Input.action_release("move_right")
+	await _wait_physics(12)
+
+	var on_screen_at_edge := GameLogic.is_point_in_camera_view(
+		_player.global_position, _camera.position, viewport_size, _camera.zoom.x
+	)
+	print("RUNTIME camera_zoom_moving=%f" % min_zoom)
+	print("RUNTIME camera_zoom_min_during_move=%f" % min_zoom)
+	print("RUNTIME camera_player_on_screen=%s" % str(on_screen_at_edge).to_lower())
+
+	if min_zoom >= zoom_before - 0.05:
+		_fail("camera did not zoom out while player moving")
+	if not on_screen_during and not on_screen_at_edge:
+		_fail("player offscreen during camera follow movement")
+	if min_zoom > fit_zoom + 0.25:
+		_fail("camera min zoom did not approach fit zoom during movement")
+
+
 func _probe_wall_thrust(
 	viewport_size: Vector2,
 	playable: Rect2,
@@ -206,15 +262,22 @@ func _probe_wall_thrust(
 
 	var pos_end := _player.global_position
 	var inside := GameLogic.is_inside_playable(pos_end, viewport_size)
+	var on_screen := GameLogic.is_point_in_camera_view(
+		pos_end, _camera.position, viewport_size, _camera.zoom.x
+	)
 	print("RUNTIME wall_%s_inside=%s" % [label, str(inside).to_lower()])
 	print("RUNTIME wall_%s_pos=%f" % [label, pos_end.x if label in ["right", "left"] else pos_end.y])
 	print("RUNTIME wall_%s_velocity=%f" % [label, _player.velocity.length()])
 	print("RUNTIME wall_%s_peak_speed=%f" % [label, peak_speed])
+	print("RUNTIME wall_%s_player_on_screen=%s" % [label, str(on_screen).to_lower()])
+	print("RUNTIME wall_%s_camera_zoom=%f" % [label, _camera.zoom.x])
 
 	if peak_speed < 20.0:
 		_fail("thrust %s did not accelerate player" % label)
 	if not inside:
 		_fail("player escaped playable rect thrusting %s (pos=%s)" % [label, pos_end])
+	if not on_screen:
+		_fail("player offscreen at wall %s (pos=%s zoom=%f)" % [label, pos_end, _camera.zoom.x])
 
 
 func _probe_spawner_wave(viewport_size: Vector2, expected_count: int) -> void:
